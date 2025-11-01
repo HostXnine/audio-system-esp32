@@ -22,7 +22,11 @@ x add relay control for V5 DC supply
 x add relay control for AC supply for the speakers
 - add AUX input support
 - add url radio connection timeout
+x split the player contorls from the remote control funciton
+x added ENUMS
+- disable remote controll for other buttons when the power is off, especially for the volume buttons
 */
+
 RTC_NOINIT_ATTR int task; //this is stored in memory which survies restarts but not power offs
 int flag;
 int menu;
@@ -31,9 +35,8 @@ esp_reset_reason_t resetReason = esp_reset_reason();
 unsigned long myLastTime; //for implementing delays for some reason it has to be a global variable otherwise it doesn't work
 
 //5V and AC on/off power supply control connected to a relay or MOSFET
-const int ON_OFF_5V_PIN = 13;
-const int ON_OFF_AC_PIN = 26;
-
+#define ON_OFF_5V_PIN 13
+#define ON_OFF_AC_PIN 26
 
 // IR
 #define IR_RECEIVE_PIN 19 // definition for IR
@@ -223,8 +226,8 @@ void servoAttachDetach() {
   }
 }
  */
-//This defines buttons and what they do. They also excecutes a processes in this function and are related totasks() function and menuControl() function
-void remoteControl() {
+
+enum remoteButtons {
   //Remote
   // const int volumeDown = 3; //- button wokwi simulator 152, real remote 3
   // const int volumeUp = 2; //+ button wokwi simulator 2, real remote 2
@@ -237,7 +240,7 @@ void remoteControl() {
   // const int power = 8;  //key 0 = 48 powe remote 8
   //zelen 113, rumen 99, plavi 97, mute 9, pgup 0, pgdown 1, 
 
-  /*Buttons for Sharp remote:
+  /* Buttons for Sharp remote:
   NET 149      |   ON/OFF 233
      1 254 | 2 253 |   3 252
      4 251 | 5 250 |   6 249
@@ -257,34 +260,39 @@ void remoteControl() {
         << 252 |       [] 253 |     >/II 254 |      >> 251 
   */
 
-  //Keyboard
-  const int volumeUp = 43; // -
-  const int volumeDown = 45; // +
-  const int menuButton = 53; // 5
-  const int nextButton = 54; // 6
-  const int prevButton = 52; // 4
-  const int stopButton = 49; // 1
-  const int pauseButton = 51; // 3
-  const int playButton = 36; // home
-  const int powerButton = 48;  // 0
-  const int debug = 42; // *
+  //Genral (keyboard)
+  VOLUME_UP = 43, // -
+  VOLUME_DOWN = 45, // +
+  MENU = 53, // 5
+  POWER = 48, // 0
+  DEBUG = 42, // *
 
-  //Buttons - 
+  //player control (keyboard)
+  NEXT = 54, // 6
+  PREVIOUS = 52, // 4
+  STOP = 49, // 1
+  PAUSE = 51, // 3
+  PLAY = 36 // home
+};
+
+//Asings what buttons do. They also excecutes a processes in this function and are related totasks() function and menuControl() function
+void remoteControl() {
+
   int buttonAState = digitalRead(BUTTON_A_PIN);
   int buttonBState = digitalRead(BUTTON_B_PIN);
 
   if (buttonAState == HIGH) {
-    irReceivedData = volumeUp;
+    irReceivedData = VOLUME_UP;
   }
   if (buttonBState == HIGH) {
-    irReceivedData = volumeDown;
+    irReceivedData = VOLUME_DOWN;
   }
 
   switch(irReceivedData) {
-    case debug:
+    case DEBUG:
       task = 1;
       break;
-    case volumeUp:
+    case VOLUME_UP:
       menu = 4;
       isServoAttached();
       if (position<=SERVO_MAX) {
@@ -292,7 +300,7 @@ void remoteControl() {
         myServo.writeMicroseconds(position);
       } 
       break;
-    case volumeDown:
+    case VOLUME_DOWN:
       menu = 4;
       isServoAttached();
       if (position>=SERVO_MIN) {
@@ -300,7 +308,7 @@ void remoteControl() {
         myServo.writeMicroseconds(position);
       }
       break;
-    case menuButton: 
+    case MENU: 
       if ((task < 3) && (task >= 0)) {
         task++;
         restart();
@@ -310,7 +318,7 @@ void remoteControl() {
         restart();
       }
       break;
-    case powerButton:
+    case POWER:
       if (task < 100) {
         task = 100;
       }
@@ -320,7 +328,12 @@ void remoteControl() {
         restart();
       }
       break;
-    case nextButton:
+  }
+}
+
+void playerControl() {
+  switch(irReceivedData) {
+    case NEXT:
       if (a2dp_sink.is_connected()) {
         a2dp_sink.next();
       } 
@@ -328,7 +341,7 @@ void remoteControl() {
         player.next();
       } 
       break;
-    case prevButton:
+    case PREVIOUS:
       if (a2dp_sink.is_connected()) {
         a2dp_sink.previous();
       } 
@@ -336,7 +349,7 @@ void remoteControl() {
         player.previous();
       } 
       break;
-    case stopButton:
+    case STOP:
       if (a2dp_sink.is_connected()) {
         a2dp_sink.stop();
       } 
@@ -344,12 +357,12 @@ void remoteControl() {
         player.stop();
       } 
       break;
-    case pauseButton:
+    case PAUSE:
       if (a2dp_sink.is_connected()) {
         a2dp_sink.pause();
       } 
       break;
-    case playButton:
+    case PLAY:
       if (a2dp_sink.is_connected()) {
         a2dp_sink.play();
       } 
@@ -360,30 +373,33 @@ void remoteControl() {
   }
 }
 
+enum menuAndTask {
+  TV = 1,
+  BLUETOOTH = 2,
+  FM = 3,
+  VOLUME = 4,
+  ON_OFF = 100
+};
+
 //This is only to defie the display function of the menu. The actual tasks or processes are in the task() funciton
 void menuControl() {
-  const int TV = 1;
-  const int Bluetooth = 2;
-  const int FM = 3;
-  const int Volume = 4;
-  
   switch (menu) {
     case TV:
       Menus.mainMenuText("TV");
       lastMenu = menu;
       menu = 0;
       break;
-    case Bluetooth:
+    case BLUETOOTH:
       Menus.mainMenuTextSmall("Bluetooth");
       lastMenu = menu;
       menu = 0;
       break;
-     case FM:
+    case FM:
       Menus.mainMenuText("FM");
       lastMenu = menu;
       menu = 0;
       break;
-    case Volume:
+    case VOLUME:
       Menus.volumeMenu();
       if (myLastTime == 0) {
         myLastTime = millis();
@@ -397,11 +413,6 @@ void menuControl() {
 
 //This are tasks related to actual connection to the audio
 void tasks() {
-  const int TV = 1;
-  const int Bluetooth = 2;
-  const int FM = 3;
-  const int onOff = 100;
-    
   switch (task) {
     case TV:
       if (task != flag) { //inside this if statement is the "setup" code runs once
@@ -410,7 +421,7 @@ void tasks() {
       }
       copierInOut.copy(); //here outside the above if statement is the "loop" code
       break;
-    case Bluetooth:
+    case BLUETOOTH:
       if (task != flag) {
         flag = task;
         menu = task;
@@ -426,7 +437,7 @@ void tasks() {
       }     
       player.copy();
       break;
-    case onOff:
+    case ON_OFF:
       if (task != flag) {
         flag = task;
         detachAll();
@@ -519,6 +530,7 @@ void loop() {
   debug();
   //remoteDecodeSignal(); //uncomment this and comment remoteControl() to use only for decoding new remotes
   remoteControl();
+  playerControl();
   //servoAttachDetach();
   tasks();
   menuControl();
