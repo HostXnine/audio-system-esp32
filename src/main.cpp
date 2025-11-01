@@ -21,6 +21,7 @@ x adjust vol/up/down text size
 - add relay control for V5 DC supply
 - add relay control for AC supply for the speakers
 - add AUX input support
+- add url radio connection timeout
 */
 RTC_NOINIT_ATTR int task; //this is stored in memory which survies restarts but not power offs
 int flag;
@@ -274,7 +275,6 @@ void remoteControl() {
     case volumeUp:
       menu = 4;
       isServoAttached();
-      //attach = true;
       if (position<=SERVO_MAX) {
         position += step;
         myServo.writeMicroseconds(position);
@@ -283,7 +283,6 @@ void remoteControl() {
     case volumeDown:
       menu = 4;
       isServoAttached();
-      //attach = true;
       if (position>=SERVO_MIN) {
         position -= step;
         myServo.writeMicroseconds(position);
