@@ -18,8 +18,8 @@ x set RTC variable for storinf servo position between restarts
 - set buttons on IR remotes
 x adjust bluetooth text lower
 x adjust vol/up/down text size
-- add relay control for V5 DC supply
-- add relay control for AC supply for the speakers
+x add relay control for V5 DC supply
+x add relay control for AC supply for the speakers
 - add AUX input support
 - add url radio connection timeout
 */
@@ -30,8 +30,10 @@ int lastMenu;
 esp_reset_reason_t resetReason = esp_reset_reason();
 unsigned long myLastTime; //for implementing delays for some reason it has to be a global variable otherwise it doesn't work
 
-//5V on/off power supply control connected to a relay or MOSFET
-const int ON_OFF_PIN = 13;
+//5V and AC on/off power supply control connected to a relay or MOSFET
+const int ON_OFF_5V_PIN = 13;
+const int ON_OFF_AC_PIN = 26;
+
 
 // IR
 #define IR_RECEIVE_PIN 19 // definition for IR
@@ -117,8 +119,8 @@ void remoteDecodeSignal() {
   } 
 }
 
-void restart() {
-  Serial.println(" Writing servo position to RTC... ");
+void detachAll() {
+Serial.println(" Writing servo position to RTC... ");
   postitionRtc = position;
   Serial.println(" Detaching...");
   myServo.detach();
@@ -143,8 +145,17 @@ void restart() {
   i2sOut.end();
   Serial.println(" i2sIn.end");
   i2sIn.end();
+}
+
+void restart() {
   Serial.println(" digitalWrite ON_OFF_PIN");
-  digitalWrite(ON_OFF_PIN, HIGH);
+  if (digitalRead(ON_OFF_5V_PIN) == LOW) {
+    digitalWrite(ON_OFF_5V_PIN, HIGH);
+  }
+  if (digitalRead(ON_OFF_AC_PIN) == LOW) {
+    digitalWrite(ON_OFF_AC_PIN, HIGH);
+  }
+  detachAll();
   Serial.println(" Restarting now...");
   esp_restart();
 }
@@ -302,7 +313,6 @@ void remoteControl() {
     case powerButton:
       if (task < 100) {
         task = 100;
-        restart();
       }
       else if (task == 100) {
         task = 1;
@@ -416,6 +426,15 @@ void tasks() {
       }     
       player.copy();
       break;
+    case onOff:
+      if (task != flag) {
+        flag = task;
+        detachAll();
+        digitalWrite(ON_OFF_5V_PIN, LOW);
+        digitalWrite(ON_OFF_AC_PIN, LOW);
+        Serial.println("OFF");
+      }
+      break;
   }
 }
 
@@ -437,8 +456,10 @@ void setup() {
   
   //Power pin
   Serial.println("Power ON pin setup");
-  pinMode(ON_OFF_PIN, OUTPUT);
-  digitalWrite(ON_OFF_PIN, HIGH);
+  pinMode(ON_OFF_5V_PIN, OUTPUT);
+  digitalWrite(ON_OFF_5V_PIN, HIGH);
+  pinMode(ON_OFF_AC_PIN, OUTPUT);
+  digitalWrite(ON_OFF_AC_PIN, HIGH);
 
   //IR
   Serial.println("IR setup");
