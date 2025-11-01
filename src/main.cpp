@@ -31,19 +31,19 @@ esp_reset_reason_t resetReason = esp_reset_reason();
 unsigned long myLastTime; //for implementing delays for some reason it has to be a global variable otherwise it doesn't work
 
 //5V on/off power supply control connected to a relay or MOSFET
-const int ON_OFF_PIN = 12;
+const int ON_OFF_PIN = 13;
 
 // IR
-#define IR_RECEIVE_PIN 16 // definition for IR
+#define IR_RECEIVE_PIN 19 // definition for IR
 int irReceivedData; //Stores the decodded button presses
 
 // Physical Buttons
-#define BUTTON_A_PIN 27 
-#define BUTTON_B_PIN 32
+#define BUTTON_A_PIN 27
+#define BUTTON_B_PIN 14
 
 // Serov
-#define SERVO_PIN 4 //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
-// Where the servo*s position will be stored (in degrees)
+#define SERVO_PIN 23 //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
+// Where the servo's position will be stored (in degrees)
 RTC_NOINIT_ATTR int postitionRtc;
 const int SERVO_MIN = 510;
 const int SERVO_MAX = 2510;
@@ -56,15 +56,16 @@ Servo myServo; // Create a "Servo" object called "servo"
 //I have set the forward and backward motion speed to 100 milliseconds difference from the stop point.
 
 //Audio OUT (external DAC)
-#define OUT_I2S_WS_PIN 15 //aka LRCLK. Connect to (LCK)
-#define OUT_I2S_BCK_PIN 14 //aka SCK. Connect to (BCK)
-#define OUT_I2S_DATA_PIN 18 // data out (DIN). Connect to (DIN)
+#define OUT_I2S_BCK_PIN 17 //aka SCK. Connect to (BCK)
+#define OUT_I2S_DATA_PIN 16 //Connect to (DIN)
+#define OUT_I2S_WS_PIN 4 //aka LRCLK. Connect to (LCK)
+// SCK connect to GND
 
 //Aduio IN (external SPDIF to I2S converer)
-#define IN_I2S_WS_PIN 34 //aka LRCLK. 
-#define IN_I2S_BCK_PIN 25 //aka SCK
-#define IN_I2S_DATA_PIN 35 // data out
-//#define IN_I2S_MCK_PIN 0  //must be 0,1 or 3. NEVER USE 1 it's the TX pin. 3 is the RX pin and 0 is not exposed. The external DAC works without MCK connection
+#define IN_I2S_WS_PIN 34 //aka LRCLK. Connect to (LRCK)
+#define IN_I2S_DATA_PIN 35 // data out. Connect to (DATA)
+#define IN_I2S_BCK_PIN 32 //aka SCK. Connect to (BCKL)
+//#define IN_I2S_MCK_PIN 3  //must be 0,1 or 3. NEVER USE 1 it's the TX pin. 3 is the RX pin and 0 is not exposed. The external DAC works without MCK connection.
 
   //Stream and quality
 AudioInfo info(48000, 2, 32); //48000 32 bit sample works the best with spdif to i2s converters even though the converter outputs 24 bit audio
@@ -134,7 +135,7 @@ void restart() {
     a2dp_sink.disconnect();
     Serial.println(" a2dp_sink.end");
     a2dp_sink.end();
-    delay(100);
+    delay(50);
     Serial.println(" btStop");
     btStop();
   }
