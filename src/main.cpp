@@ -22,11 +22,12 @@ x add relay control for V5 DC supply
 x add relay control for AC supply for the speakers
 x add AUX input support
 - add url radio connection timeout
+x add url radio station to the oled display
 x split the player contorls from the remote control funciton
 x add ENUMS
 - disable remote controll and other buttons when the power is off, especially for the volume buttons
 x optimize the playerControl() function
-- optimize the remoteControl() function
+x optimize the remoteControl() function
 */
 
 // Taks and menu control global variables 
@@ -92,6 +93,13 @@ const char* URLS[] = {
   "http://reflector.radionet.si:8000/stream.ogg",
   "http://stream.srg-ssr.ch/m/drs3/mp3_128"
 };
+
+const char* RADIO_STATION_NAMES[] = {
+  "Toti Radio",
+  "NET FM",
+  "Swiss Radio"
+};
+int currentStation = 0;
 
 URLStream urlStream(WIFI, PASSWORD);
 AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
@@ -168,36 +176,6 @@ void restart() {
   esp_restart();
 }
 
-class MenuClass {
-  public:
-  void mainMenuText(const char mainName[10]) {
-    display.clearDisplay();
-    display.setCursor(30, 12);
-    display.setTextSize(5);
-    display.println(mainName);
-    display.display(); 
-    Serial.println(mainName);
-  }
-  void mainMenuTextSmall(const char mainName[10]) {
-    display.clearDisplay();
-    display.setCursor(12, 30);
-    display.setTextSize(2);
-    display.println(mainName);
-    display.display(); 
-    Serial.println(mainName);
-  }
-  void volumeMenu() {
-    display.clearDisplay();
-    display.setCursor(12, 20);
-    display.setTextSize(3);
-    display.println(position);
-    display.display();
-    Serial.println(position);
-  }
-};
-
-MenuClass Menus;
-
 //Checks if servo is attached, if not it attaches it. Don't put servo attach in setup() because it makes it jitter.
 void isServoAttached() {
   if (myServo.attached() == false) { 
@@ -230,6 +208,47 @@ void servoAttachDetach() {
   }
 }
  */
+
+class MenuClass {
+  public:
+  void mainMenuText(const char mainName[10]) {
+    display.clearDisplay();
+    display.setCursor(30, 12);
+    display.setTextSize(5);
+    display.println(mainName);
+    display.display(); 
+    Serial.println(mainName);
+  }
+  void mainMenuTextSmall(const char mainName[10]) {
+    display.clearDisplay();
+    display.setCursor(12, 30);
+    display.setTextSize(2);
+    display.println(mainName);
+    display.display(); 
+    Serial.println(mainName);
+  }
+  void volumeMenu() {
+    display.clearDisplay();
+    display.setCursor(12, 20);
+    display.setTextSize(3);
+    display.println(position);
+    display.display();
+    Serial.println(position);
+  }
+  void radioMenu() {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextSize(2);
+    display.println("Radio");
+    display.setCursor(0, 30);
+    display.println(RADIO_STATION_NAMES[currentStation]);
+    display.display();
+    Serial.println("Radio");
+    Serial.println(RADIO_STATION_NAMES[currentStation]);
+  }
+};
+
+MenuClass Menus;
 
 enum remoteButtons {
   //Remote
@@ -279,7 +298,7 @@ enum remoteButtons {
 };
 
 enum menuAndTask {
-  NO_OF_MAIN_MENU_ITEMS = 4,
+  NO_OF_MAIN_MENU_ITEMS = 4, //update this number if you add a main menu item
   TV_MENU = 1,
   BLUETOOTH_MENU = 2,
   FM_MENU = 3,
@@ -352,6 +371,8 @@ void playerControl() {
     } 
     else if (player.isActive()) {
       player.next();
+      currentStation = (currentStation + 1) % (sizeof(URLS) / sizeof(URLS[0]));
+      Menus.radioMenu();
     } 
     break;
     case PREVIOUS:
@@ -360,6 +381,8 @@ void playerControl() {
     } 
     else if (player.isActive()) {
       player.previous();
+      currentStation = (currentStation - 1 + (sizeof(URLS) / sizeof(URLS[0]))) % (sizeof(URLS) / sizeof(URLS[0]));
+      Menus.radioMenu();
     } 
     break;
     case STOP:
@@ -398,22 +421,18 @@ void menuControl() {
     Menus.mainMenuText("TV");
     lastMenuSet();
     break;
-
     case BLUETOOTH_MENU:
     Menus.mainMenuTextSmall("Bluetooth");
     lastMenuSet();
     break;
-
     case FM_MENU:
-    Menus.mainMenuText("FM");
+    Menus.radioMenu();
     lastMenuSet();
     break;
-
     case AUX_MENU:
     Menus.mainMenuText("AUX");
     lastMenuSet();
     break;
-
     case VOLUME_MENU:
     Menus.volumeMenu();
     if (myLastTime == 0) {
@@ -500,7 +519,7 @@ void setup() {
   digitalWrite(ON_OFF_AC_PIN, HIGH);
   
   pinMode(AUX_LEFT_PIN, OUTPUT);
-  digitalWrite(AUX_LEFT_PIN, LOW);
+  digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
   
   pinMode(AUX_RIGHT_PIN, OUTPUT);
   digitalWrite(AUX_RIGHT_PIN, LOW);
