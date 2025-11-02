@@ -25,12 +25,12 @@ x add AUX input support
 x split the player contorls from the remote control funciton
 x add ENUMS
 - disable remote controll and other buttons when the power is off, especially for the volume buttons
-- optimize the playerControl() function
+x optimize the playerControl() function
 - optimize the remoteControl() function
 */
 
 // Taks and menu control global variables 
-RTC_NOINIT_ATTR int task; //this is stored in memory which survies restarts but not power offs
+RTC_NOINIT_ATTR int task; //this variable survives restarts
 int flag;
 int menu;
 int lastMenu;
@@ -44,7 +44,7 @@ unsigned long myLastTime; //for implementing delays for some reason it has to be
 #define AUX_RIGHT_PIN 33
 
 // IR
-#define IR_RECEIVE_PIN 19 // definition for IR
+#define IR_RECEIVE_PIN 19
 int irReceivedData; //Stores the decodded button presses
 
 // Physical Buttons
@@ -57,11 +57,10 @@ RTC_NOINIT_ATTR int postitionRtc; // servo postition stored in ms
 const int SERVO_MIN = 510;
 const int SERVO_MAX = 2510;
 int position = SERVO_MIN; // servo position stored in ms
-int step = 10; // Used for the servo's position step
-Servo myServo; // Create a "Servo" object called "servo"
+int step = 10; // Sservo's one step movement in ms
+Servo myServo;
 
-//servo miliseconds position for continous SG90 servo is between 1490 - 1540 still. The speet range is min cca 900 and max cca 2100.
-//The ideal stop pint is then 1515 milliseconds.
+//Servo is still at 1490 - 1540 if you use a 360 (SG90) servo. Speed min 900 - max 2100. Ideal stop pint is 1515 ms.
 //I have set the forward and backward motion speed to 100 milliseconds difference from the stop point.
 
 //Audio OUT (external DAC)
@@ -76,19 +75,18 @@ Servo myServo; // Create a "Servo" object called "servo"
 #define IN_I2S_BCK_PIN 32 //aka SCK. Connect to (BCKL)
 //#define IN_I2S_MCK_PIN 3  //must be 0,1 or 3. NEVER USE 1 it's the TX pin. 3 is the RX pin and 0 is not exposed. The external DAC works without MCK connection.
 
-  //Stream and quality
+//Stream and quality
 AudioInfo info(48000, 2, 32); //48000 32 bit sample works the best with spdif to i2s converters even though the converter outputs 24 bit audio
 I2SStream i2sIn;
 I2SStream i2sOut;
 
-  //Bluetooth
+//Bluetooth
 BluetoothA2DPSink a2dp_sink(i2sOut);
 
-  //Copying I2S stream from external SPDIF converter to external DAC. 
-  //This is only makes the object to actually run this you need to use copierInOut.copy() in void loop()
+//Copying I2S stream from external SPDIF converter to external DAC. To actually run the stream you need to use copierInOut.copy() in loop()
 StreamCopy copierInOut(i2sOut, i2sIn);
 
-  //Internet Radio
+//Internet Radio
 const char* URLS[] = {
   "http://live.radio.si/Toti",
   "http://reflector.radionet.si:8000/stream.ogg",
@@ -172,7 +170,6 @@ void restart() {
 
 class MenuClass {
   public:
-  // static const unsigned char PROGMEM bluetooth_icon_64x64_bmp[4096];
   void mainMenuText(const char mainName[10]) {
     display.clearDisplay();
     display.setCursor(30, 12);
@@ -201,7 +198,7 @@ class MenuClass {
 
 MenuClass Menus;
 
-//This function checks if the servo is attached, if not it attaches it. Don't put attach servo in setup() because it makes a it jitter.
+//Checks if servo is attached, if not it attaches it. Don't put servo attach in setup() because it makes it jitter.
 void isServoAttached() {
   if (myServo.attached() == false) { 
     myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
@@ -246,7 +243,6 @@ enum remoteButtons {
   // const int playButton = 176; //play, remote 176
   // const int power = 8;  //key 0 = 48 powe remote 8
   //zelen 113, rumen 99, plavi 97, mute 9, pgup 0, pgdown 1, 
-
   /* Buttons for Sharp remote:
   NET 149      |   ON/OFF 233
      1 254 | 2 253 |   3 252
@@ -267,14 +263,14 @@ enum remoteButtons {
         << 252 |       [] 253 |     >/II 254 |      >> 251 
   */
 
-  //Genral (keyboard)
+  //General (keyboard)
   VOLUME_UP = 43, // -
   VOLUME_DOWN = 45, // +
   MENU = 53, // 5
   POWER = 48, // 0
   DEBUG = 42, // *
 
-  //player control (keyboard)
+  //Player control (keyboard)
   NEXT = 54, // 6
   PREVIOUS = 52, // 4
   STOP = 49, // 1
@@ -292,7 +288,7 @@ enum menuAndTask {
   ON_OFF_MENU = 100
 };
 
-//Asings what buttons do. They also excecutes a processes in this function and are related totasks() function and menuControl() function
+//Asings what buttons do. They are also related to tasks() and menuControl() functionality
 void remoteControl() {
 
   int buttonAState = digitalRead(BUTTON_A_PIN);
@@ -309,7 +305,6 @@ void remoteControl() {
     case DEBUG:
     task = 1;
     break;
-
     case VOLUME_UP:
     menu = VOLUME_MENU;
     isServoAttached();
@@ -318,7 +313,6 @@ void remoteControl() {
       myServo.writeMicroseconds(position);
     } 
     break;
-
     case VOLUME_DOWN:
     menu = VOLUME_MENU;
     isServoAttached();
@@ -327,7 +321,6 @@ void remoteControl() {
       myServo.writeMicroseconds(position);
     }
     break;
-
     case MENU: 
     if ((task < NO_OF_MAIN_MENU_ITEMS) && (task >= 0)) {
       task++;
@@ -338,7 +331,6 @@ void remoteControl() {
       restart();
     }
     break;
-
     case POWER:
     if (task < ON_OFF_MENU) {
       task = ON_OFF_MENU;
@@ -352,7 +344,6 @@ void remoteControl() {
   }
 }
 
-
 void playerControl() {
   switch(irReceivedData) {
     case NEXT:
@@ -363,7 +354,6 @@ void playerControl() {
       player.next();
     } 
     break;
-
     case PREVIOUS:
     if (a2dp_sink.is_connected()) {
       a2dp_sink.previous();
@@ -372,7 +362,6 @@ void playerControl() {
       player.previous();
     } 
     break;
-
     case STOP:
     if (a2dp_sink.is_connected()) {
       a2dp_sink.stop();
@@ -381,13 +370,11 @@ void playerControl() {
       player.stop();
     } 
     break;
-
     case PAUSE:
     if (a2dp_sink.is_connected()) {
       a2dp_sink.pause();
     } 
     break;
-
     case PLAY:
     if (a2dp_sink.is_connected()) {
       a2dp_sink.play();
@@ -404,7 +391,7 @@ void lastMenuSet() {
   menu = 0;
 }
 
-//This is only to defie the display function of the menu. The actual tasks or processes are in the task() funciton
+// Only to define menu control as seen on the oled screen.
 void menuControl() {
   switch (menu) {
     case TV_MENU:
@@ -445,23 +432,21 @@ void flagTaskSet() {
   menu = task;
 }
 
-//This are tasks related to actual connection to the audio
+//Tasks related to actual connection to the audio
 void tasks() {
   switch (task) {
     case TV_MENU:
-    if (task != flag) { //inside this if statement is the "setup" code runs once
+    if (task != flag) { //inside this if is the "setup" code, it runs once
       flagTaskSet();
     }
-    copierInOut.copy(); //here outside the above if statement is the "loop" code
+    copierInOut.copy(); // outside the above if is the "loop" code
     break;
-
     case BLUETOOTH_MENU:
     if (task != flag) {
       flagTaskSet();
       a2dp_sink.start("MojAudio");
     }
     break;
-
     case FM_MENU:
     if (task != flag) {
       flagTaskSet();
@@ -470,7 +455,6 @@ void tasks() {
     }     
     player.copy();
     break;
-
     case AUX_MENU:
     if (task != flag) {
       flagTaskSet();
@@ -480,7 +464,6 @@ void tasks() {
       }
     }
     break;
-
     case ON_OFF_MENU:
     if (task != flag) {
       flag = task;
@@ -503,13 +486,12 @@ void setup() {
     Serial.println("RTC variabke setup");
     task = 1;
   }
-  
   if ((postitionRtc < SERVO_MIN-100) || (postitionRtc > SERVO_MAX+100)) {
     Serial.println("calibrating positionRTC setup");
     postitionRtc = SERVO_MIN+500;
   }
   
-  // Relays
+  //Relays
   Serial.println("Relays setup");
   pinMode(ON_OFF_5V_PIN, OUTPUT);
   digitalWrite(ON_OFF_5V_PIN, HIGH);
@@ -527,7 +509,7 @@ void setup() {
   Serial.println("IR setup");
   IrReceiver.begin(IR_RECEIVE_PIN);
 
-  //Defining buttons by using internal pull-down resistors
+  //Buttons
   Serial.println("Buttons setup");
   pinMode(BUTTON_A_PIN, INPUT_PULLDOWN);
   pinMode(BUTTON_B_PIN, INPUT_PULLDOWN);
@@ -550,7 +532,7 @@ void setup() {
   cfgIn.pin_data = IN_I2S_DATA_PIN;
   i2sIn.begin(cfgIn);
 
-  // I2S out
+  //I2S out
   Serial.println("I2S out setup"); 
   auto cfgOut = i2sOut.defaultConfig(TX_MODE);
   cfgOut.copyFrom(info); 
@@ -578,10 +560,10 @@ void debug() {
 }
 
 void loop() {
-  debug();
   //remoteDecodeSignal(); // comment it out for keyboard control
   remoteControl();
   playerControl();
   menuControl();
   tasks();
+  debug();
 }
