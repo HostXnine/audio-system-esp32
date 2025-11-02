@@ -24,7 +24,7 @@ x add AUX input support
 - add url radio connection timeout
 x split the player contorls from the remote control funciton
 x add ENUMS
-- disable remote controll for other buttons when the power is off, especially for the volume buttons
+- disable remote controll and other buttons when the power is off, especially for the volume buttons
 - optimize the playerControl() function
 - optimize the remoteControl() function
 */
@@ -53,11 +53,10 @@ int irReceivedData; //Stores the decodded button presses
 
 // Serov
 #define SERVO_PIN 23 //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
-// Where the servo's position will be stored (in degrees)
-RTC_NOINIT_ATTR int postitionRtc;
+RTC_NOINIT_ATTR int postitionRtc; // servo postition stored in ms
 const int SERVO_MIN = 510;
 const int SERVO_MAX = 2510;
-int position = SERVO_MIN; // Where the servo*s position will be stored (in degrees)
+int position = SERVO_MIN; // servo position stored in ms
 int step = 10; // Used for the servo's position step
 Servo myServo; // Create a "Servo" object called "servo"
 
@@ -112,15 +111,15 @@ enum oledSettings {
 
 Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-//Used only to decode a new type of remote and debuging
 void remoteDecodeSignal() {
   if (IrReceiver.decode()) { //Returns true if anything is received by the remote
-    Serial.print("IrReceiver.decodedIRData.command=");
+    //use all that has Serial in front for Decoding new remote:
+    /* Serial.print("IrReceiver.decodedIRData.command=");
     Serial.print(IrReceiver.decodedIRData.command);
     Serial.print(" Protocol=");
     Serial.print(IrReceiver.decodedIRData.protocol);
     Serial.print(" ProtocolName=");
-    Serial.println(getProtocolString(IrReceiver.decodedIRData.protocol));
+    Serial.println(getProtocolString(IrReceiver.decodedIRData.protocol)); */
     irReceivedData = IrReceiver.decodedIRData.command; //stores IR decoded code in dec
     IrReceiver.resume();  //Receive the next value
   } 
@@ -580,10 +579,9 @@ void debug() {
 
 void loop() {
   debug();
-  //remoteDecodeSignal(); //uncomment this and comment remoteControl() to use only for decoding new remotes
+  //remoteDecodeSignal(); // comment it out for keyboard control
   remoteControl();
   playerControl();
-  //servoAttachDetach();
   menuControl();
   tasks();
 }
