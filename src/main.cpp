@@ -20,13 +20,16 @@ x adjust bluetooth text lower
 x adjust vol/up/down text size
 x add relay control for V5 DC supply
 x add relay control for AC supply for the speakers
-- add AUX input support
+x add AUX input support
 - add url radio connection timeout
 x split the player contorls from the remote control funciton
-x added ENUMS
+x add ENUMS
 - disable remote controll for other buttons when the power is off, especially for the volume buttons
+- optimize the playerControl() function
+- optimize the remoteControl() function
 */
 
+// Taks and menu control global variables 
 RTC_NOINIT_ATTR int task; //this is stored in memory which survies restarts but not power offs
 int flag;
 int menu;
@@ -34,9 +37,11 @@ int lastMenu;
 esp_reset_reason_t resetReason = esp_reset_reason();
 unsigned long myLastTime; //for implementing delays for some reason it has to be a global variable otherwise it doesn't work
 
-//5V and AC on/off power supply control connected to a relay or MOSFET
+// Relay setup
 #define ON_OFF_5V_PIN 13
 #define ON_OFF_AC_PIN 26
+#define AUX_LEFT_PIN 25
+#define AUX_RIGHT_PIN 33
 
 // IR
 #define IR_RECEIVE_PIN 19 // definition for IR
@@ -98,10 +103,13 @@ AudioPlayer player(urlSource, i2sOut, decoder);
 Debouncer buttonDebouncer(2000); // for AudioPlayer
 
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+enum oledSettings {
+  SCREEN_ADDRESS = 0x3C, ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+  SCREEN_WIDTH = 128,
+  SCREEN_HEIGHT = 64,
+  OLED_RESET = -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+};
+
 Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 //Used only to decode a new type of remote and debuging
@@ -275,6 +283,16 @@ enum remoteButtons {
   PLAY = 36 // home
 };
 
+enum menuAndTask {
+  NO_OF_MAIN_MENU_ITEMS = 4,
+  TV_MENU = 1,
+  BLUETOOTH_MENU = 2,
+  FM_MENU = 3,
+  AUX_MENU = 4,
+  VOLUME_MENU = 50,
+  ON_OFF_MENU = 100
+};
+
 //Asings what buttons do. They also excecutes a processes in this function and are related totasks() function and menuControl() function
 void remoteControl() {
 
@@ -290,162 +308,189 @@ void remoteControl() {
 
   switch(irReceivedData) {
     case DEBUG:
-      task = 1;
-      break;
+    task = 1;
+    break;
+
     case VOLUME_UP:
-      menu = 4;
-      isServoAttached();
-      if (position<=SERVO_MAX) {
-        position += step;
-        myServo.writeMicroseconds(position);
-      } 
-      break;
+    menu = VOLUME_MENU;
+    isServoAttached();
+    if (position<=SERVO_MAX) {
+      position += step;
+      myServo.writeMicroseconds(position);
+    } 
+    break;
+
     case VOLUME_DOWN:
-      menu = 4;
-      isServoAttached();
-      if (position>=SERVO_MIN) {
-        position -= step;
-        myServo.writeMicroseconds(position);
-      }
-      break;
+    menu = VOLUME_MENU;
+    isServoAttached();
+    if (position>=SERVO_MIN) {
+      position -= step;
+      myServo.writeMicroseconds(position);
+    }
+    break;
+
     case MENU: 
-      if ((task < 3) && (task >= 0)) {
-        task++;
-        restart();
-      } 
-      else {
-        task = 1;
-        restart();
-      }
-      break;
+    if ((task < NO_OF_MAIN_MENU_ITEMS) && (task >= 0)) {
+      task++;
+      restart();
+    } 
+    else {
+      task = 1;
+      restart();
+    }
+    break;
+
     case POWER:
-      if (task < 100) {
-        task = 100;
-      }
-      else if (task == 100) {
-        task = 1;
-        irReceivedData = 0;
-        restart();
-      }
-      break;
+    if (task < ON_OFF_MENU) {
+      task = ON_OFF_MENU;
+    }
+    else if (task == ON_OFF_MENU) {
+      task = 1;
+      irReceivedData = 0;
+      restart();
+    }
+    break;
   }
 }
+
 
 void playerControl() {
   switch(irReceivedData) {
     case NEXT:
-      if (a2dp_sink.is_connected()) {
-        a2dp_sink.next();
-      } 
-      else if (player.isActive()) {
-        player.next();
-      } 
-      break;
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.next();
+    } 
+    else if (player.isActive()) {
+      player.next();
+    } 
+    break;
+
     case PREVIOUS:
-      if (a2dp_sink.is_connected()) {
-        a2dp_sink.previous();
-      } 
-      else if (player.isActive()) {
-        player.previous();
-      } 
-      break;
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.previous();
+    } 
+    else if (player.isActive()) {
+      player.previous();
+    } 
+    break;
+
     case STOP:
-      if (a2dp_sink.is_connected()) {
-        a2dp_sink.stop();
-      } 
-      else if (player.isActive()) { 
-        player.stop();
-      } 
-      break;
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.stop();
+    } 
+    else if (player.isActive()) { 
+      player.stop();
+    } 
+    break;
+
     case PAUSE:
-      if (a2dp_sink.is_connected()) {
-        a2dp_sink.pause();
-      } 
-      break;
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.pause();
+    } 
+    break;
+
     case PLAY:
-      if (a2dp_sink.is_connected()) {
-        a2dp_sink.play();
-      } 
-      else if (player.isActive()) { 
-        player.play();
-      } 
-      break;
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.play();
+    } 
+    else if (player.isActive()) { 
+      player.play();
+    } 
+    break;
   }
 }
 
-enum menuAndTask {
-  TV = 1,
-  BLUETOOTH = 2,
-  FM = 3,
-  VOLUME = 4,
-  ON_OFF = 100
-};
+void lastMenuSet() {
+  lastMenu = menu;
+  menu = 0;
+}
 
 //This is only to defie the display function of the menu. The actual tasks or processes are in the task() funciton
 void menuControl() {
   switch (menu) {
-    case TV:
-      Menus.mainMenuText("TV");
-      lastMenu = menu;
-      menu = 0;
-      break;
-    case BLUETOOTH:
-      Menus.mainMenuTextSmall("Bluetooth");
-      lastMenu = menu;
-      menu = 0;
-      break;
-    case FM:
-      Menus.mainMenuText("FM");
-      lastMenu = menu;
-      menu = 0;
-      break;
-    case VOLUME:
-      Menus.volumeMenu();
-      if (myLastTime == 0) {
-        myLastTime = millis();
-      }
-      if ((millis() - myLastTime) >= 1000) {
-        myLastTime = 0;
-        menu = lastMenu;
-      }
+    case TV_MENU:
+    Menus.mainMenuText("TV");
+    lastMenuSet();
+    break;
+
+    case BLUETOOTH_MENU:
+    Menus.mainMenuTextSmall("Bluetooth");
+    lastMenuSet();
+    break;
+
+    case FM_MENU:
+    Menus.mainMenuText("FM");
+    lastMenuSet();
+    break;
+
+    case AUX_MENU:
+    Menus.mainMenuText("AUX");
+    lastMenuSet();
+    break;
+
+    case VOLUME_MENU:
+    Menus.volumeMenu();
+    if (myLastTime == 0) {
+      myLastTime = millis();
+    }
+    if ((millis() - myLastTime) >= 1000) {
+      myLastTime = 0;
+      menu = lastMenu;
+    }
+    break;
   }
+}
+
+void flagTaskSet() {
+  flag = task;
+  menu = task;
 }
 
 //This are tasks related to actual connection to the audio
 void tasks() {
   switch (task) {
-    case TV:
-      if (task != flag) { //inside this if statement is the "setup" code runs once
-        flag = task;
-        menu = task;
+    case TV_MENU:
+    if (task != flag) { //inside this if statement is the "setup" code runs once
+      flagTaskSet();
+    }
+    copierInOut.copy(); //here outside the above if statement is the "loop" code
+    break;
+
+    case BLUETOOTH_MENU:
+    if (task != flag) {
+      flagTaskSet();
+      a2dp_sink.start("MojAudio");
+    }
+    break;
+
+    case FM_MENU:
+    if (task != flag) {
+      flagTaskSet();
+      player.begin();
+      //AudioLogger::instance().begin(Serial, AudioLogger::Info);//for debbuging
+    }     
+    player.copy();
+    break;
+
+    case AUX_MENU:
+    if (task != flag) {
+      flagTaskSet();
+      if (digitalRead(AUX_LEFT_PIN) == LOW || digitalRead(AUX_RIGHT_PIN) == LOW) {
+        digitalWrite(AUX_LEFT_PIN, HIGH);
+        digitalWrite(AUX_RIGHT_PIN, HIGH);
       }
-      copierInOut.copy(); //here outside the above if statement is the "loop" code
-      break;
-    case BLUETOOTH:
-      if (task != flag) {
-        flag = task;
-        menu = task;
-        a2dp_sink.start("MojAudio");
-      }
-      break;
-    case FM:
-      if (task != flag) {
-        flag = task;
-        menu = task;
-        player.begin();
-        //AudioLogger::instance().begin(Serial, AudioLogger::Info);//for debbuging
-      }     
-      player.copy();
-      break;
-    case ON_OFF:
-      if (task != flag) {
-        flag = task;
-        detachAll();
-        digitalWrite(ON_OFF_5V_PIN, LOW);
-        digitalWrite(ON_OFF_AC_PIN, LOW);
-        Serial.println("OFF");
-      }
-      break;
+    }
+    break;
+
+    case ON_OFF_MENU:
+    if (task != flag) {
+      flag = task;
+      detachAll();
+      digitalWrite(ON_OFF_5V_PIN, LOW);
+      digitalWrite(ON_OFF_AC_PIN, LOW);
+      Serial.println("OFF");
+    }
+    break;
   }
 }
 
@@ -465,12 +510,19 @@ void setup() {
     postitionRtc = SERVO_MIN+500;
   }
   
-  //Power pin
-  Serial.println("Power ON pin setup");
+  // Relays
+  Serial.println("Relays setup");
   pinMode(ON_OFF_5V_PIN, OUTPUT);
   digitalWrite(ON_OFF_5V_PIN, HIGH);
+  
   pinMode(ON_OFF_AC_PIN, OUTPUT);
   digitalWrite(ON_OFF_AC_PIN, HIGH);
+  
+  pinMode(AUX_LEFT_PIN, OUTPUT);
+  digitalWrite(AUX_LEFT_PIN, LOW);
+  
+  pinMode(AUX_RIGHT_PIN, OUTPUT);
+  digitalWrite(AUX_RIGHT_PIN, LOW);
 
   //IR
   Serial.println("IR setup");
@@ -532,6 +584,6 @@ void loop() {
   remoteControl();
   playerControl();
   //servoAttachDetach();
-  tasks();
   menuControl();
+  tasks();
 }
