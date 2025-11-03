@@ -52,6 +52,9 @@ unsigned long myLastTime; //for implementing delays. For some reason it has to b
 // IR
 #define IR_RECEIVE_PIN 19
 int irReceivedData; //Stores the decodded button presses
+bool buttonState = false;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 1000;
 
 // Physical Buttons
 #define BUTTON_A_PIN 27
@@ -173,14 +176,12 @@ enum remoteButtons {
   ||11 | [] 1 | ||> 16 | O  inactive
   When pressed [] and O simultanious it is 9
   */
-
   //General (NEC)
   MENU = 5,
   POWER = 20,
   VOLUME_UP = 24,
   VOLUME_DOWN = 25,
   DEBUG = 500,
-
   //Player control (NEC)
   NEXT = 3,
   PREVIOUS = 2,
@@ -220,14 +221,27 @@ void decodeNewRemote() { //only used when decoding a new remote
 }
 
 void remoteDecodeSignal() {
-  if (IrReceiver.decode()) { //Returns true if anything is received by the remote
-    irReceivedData = IrReceiver.decodedIRData.command; //stores IR decoded code in dec
-    IrReceiver.resume();  //Receive the next value
-  } 
-  else {
-    irReceivedData = -1; //Just any big value. It could be 0 but since 0 is also for no signal it's easier to debug this way
+  if (!IrReceiver.decode()) {
+    irReceivedData = 0;
+    return;
+  }
+  if (IrReceiver.decode() && (!buttonState)) {
+    lastDebounceTime = millis();
+    buttonState = true;
+    Serial.println(" PRESSED ");
+  }
+  if (((millis() - lastDebounceTime) > debounceDelay) && (buttonState)) {
+    irReceivedData = IrReceiver.decodedIRData.command;
+    Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
+    Serial.println(irReceivedData);
+/*     irReceivedData = 0;
+    Serial.print(" irReceivedData = 0 =  ");
+    Serial.println(irReceivedData); */
+    buttonState = false;
     IrReceiver.resume();
-  } 
+    Serial.print(" IrReceiver.resume() =  ");
+    Serial.println(irReceivedData);
+  }
 }
 
 void remoteOnOff() {
