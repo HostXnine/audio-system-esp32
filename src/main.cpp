@@ -30,7 +30,8 @@ x add ENUMS
 x disable remote controll and other buttons when the power is off, especially for the volume buttons
 x optimize the playerControl() function
 x optimize the remoteControl() function
-- add debaunce for remote control
+x add debaunce for remote control
+- optimize deoubce for remote control
 - add connecting and connected to the display when using bluetooth
 - optimize the setup() code
 */
@@ -221,10 +222,7 @@ void decodeNewRemote() { //only used when decoding a new remote
 }
 
 void remoteDecodeSignal() {
-  if (!IrReceiver.decode()) {
-    irReceivedData = 0;
-    return;
-  }
+  irReceivedData = 0;
   if (IrReceiver.decode() && (!buttonState)) {
     lastDebounceTime = millis();
     buttonState = true;
