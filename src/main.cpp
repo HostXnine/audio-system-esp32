@@ -8,6 +8,8 @@
 #include <ESP32Servo.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
+#define DECODE_NEC
+//#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
 
 /*To do list:
@@ -25,18 +27,21 @@ x add AUX input support
 x add url radio station to the oled display
 x split the player contorls from the remote control funciton
 x add ENUMS
-- disable remote controll and other buttons when the power is off, especially for the volume buttons
+x disable remote controll and other buttons when the power is off, especially for the volume buttons
 x optimize the playerControl() function
 x optimize the remoteControl() function
+- add debaunce for remote control
+- add connecting and connected to the display when using bluetooth
+- optimize the setup() code
 */
 
-// Taks and menu control global variables 
-RTC_NOINIT_ATTR int task; //this variable survives restarts
+// Tasks and menu control global variables
+RTC_NOINIT_ATTR int task; //RTC variable survive restarts
 int flag;
 int menu;
 int lastMenu;
 esp_reset_reason_t resetReason = esp_reset_reason();
-unsigned long myLastTime; //for implementing delays for some reason it has to be a global variable otherwise it doesn't work
+unsigned long myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
 
 // Relay setup
 #define ON_OFF_5V_PIN 13
@@ -117,22 +122,127 @@ enum oledSettings {
 
 Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-void remoteDecodeSignal() {
-  if (IrReceiver.decode()) { //Returns true if anything is received by the remote
-    //use all that has Serial in front for Decoding new remote:
-    /* Serial.print("IrReceiver.decodedIRData.command=");
+enum menuAndTask {
+  NO_OF_MAIN_MENU_ITEMS = 4, //update this number if you add a main menu item
+  TV_MENU = 1,
+  BLUETOOTH_MENU = 2,
+  FM_MENU = 3,
+  AUX_MENU = 4,
+  VOLUME_MENU = 50,
+  ON_OFF_MENU = 100
+};
+
+enum remoteButtons {
+  //Remote
+  // const int volumeDown = 3; //- button wokwi simulator 152, real remote 3
+  // const int volumeUp = 2; //+ button wokwi simulator 2, real remote 2
+  // const int menuButton = 114; //task button wokwi simulator 226, real remote 114, key 5 = 53
+  // const int nextButton = 142; //key 6 = 54, remote 142
+  // const int prevButton = 143; //key 4 = 52, remote 143
+  // const int stopButton = 177; // key 1 = 49, remote 177
+  // const int pauseButton = 186; // key 3 = 51, remote 186
+  // const int playButton = 176; //play, remote 176
+  // const int power = 8;  //key 0 = 48 powe remote 8
+  //zelen 113, rumen 99, plavi 97, mute 9, pgup 0, pgdown 1, 
+  /* Buttons for Sharp remote it uses DECODE_DENON:
+  NET 149      |   ON/OFF 233
+     1 254 | 2 253 |   3 252
+     4 251 | 5 250 |   6 249
+     7 248 | 8 247 |   9 246
+  <--> 216 | 0 254 |->[] 236
+  <> 55 | v/oo 231 | i+ 228 | FAV 86
+  vol+ 235  | 3D 76  | P^ 238
+  vol- 234  | EPG 92 | Pv 237 
+  mute 232 | MODE/AV 7 | ECO 200 | END 10
+           ^ 168
+     < 40 |OK 173| > 39
+           v 223
+  MENU 57            backArrow 27              
+       red 183 |    green 182 |   yellow 181 |    blue 180
+  teletext 203 | subtitles 96 |   ATV/DTV 95 |    RADIO 91
+    SOURCE 255 |      REC 250 | REC STOP 249 | USB REC 194
+        << 252 |       [] 253 |     >/II 254 |      >> 251 
+  */
+  /* Buttons on VCR remote. I uses DECODE_NEC
+  Operate 20
+  1  5 | 2  6 | 3  7
+  4 12 | 5 13 | 6 14
+  7 15 | 8 28 | 9 29
+  v 25 | 0  4 | ^ 24
+  << 2 | >  8 | >> 3   | [] inactive
+  ||11 | [] 1 | ||> 16 | O  inactive
+  When pressed [] and O simultanious it is 9
+  */
+
+  //General (NEC)
+  MENU = 5,
+  POWER = 20,
+  VOLUME_UP = 24,
+  VOLUME_DOWN = 25,
+  DEBUG = 500,
+
+  //Player control (NEC)
+  NEXT = 3,
+  PREVIOUS = 2,
+  STOP = 1,
+  PAUSE = 11,
+  PLAY = 8,
+ /*  //General (keyboard)
+  MENU = 53, // 5
+  POWER = 48, // 0
+  VOLUME_UP = 43, // -
+  VOLUME_DOWN = 45, // +
+  DEBUG = 42, // *
+
+  //Player control (keyboard)
+  NEXT = 54, // 6
+  PREVIOUS = 52, // 4
+  STOP = 49, // 1
+  PAUSE = 51, // 3
+  PLAY = 36 // home */
+};
+
+void decodeNewRemote() { //only used when decoding a new remote
+  if (IrReceiver.decode()) {
+    Serial.print("IrReceiver.decodedIRData.command=");
     Serial.print(IrReceiver.decodedIRData.command);
     Serial.print(" Protocol=");
     Serial.print(IrReceiver.decodedIRData.protocol);
     Serial.print(" ProtocolName=");
-    Serial.println(getProtocolString(IrReceiver.decodedIRData.protocol)); */
+    Serial.println(getProtocolString(IrReceiver.decodedIRData.protocol));
+    irReceivedData = IrReceiver.decodedIRData.command;
+    IrReceiver.resume();
+  } 
+  else {
+    irReceivedData = -1;
+    IrReceiver.resume();
+  } 
+}
+
+void remoteDecodeSignal() {
+  if (IrReceiver.decode()) { //Returns true if anything is received by the remote
     irReceivedData = IrReceiver.decodedIRData.command; //stores IR decoded code in dec
     IrReceiver.resume();  //Receive the next value
   } 
   else {
-    irReceivedData = 0xFFFF; //Just any big value. It could be 0 but since 0 is also for no signal it's easier to debug this way
-    IrReceiver.resume();  
+    irReceivedData = -1; //Just any big value. It could be 0 but since 0 is also for no signal it's easier to debug this way
+    IrReceiver.resume();
   } 
+}
+
+void remoteOnOff() {
+  if (task != ON_OFF_MENU) {
+    remoteDecodeSignal();
+    return;
+  }
+  if (IrReceiver.decode() && IrReceiver.decodedIRData.command == POWER) {
+    irReceivedData = POWER;
+    IrReceiver.resume();
+  }
+  else {
+    irReceivedData = -1;
+    IrReceiver.resume();  
+  }
 }
 
 void detachAll() {
@@ -249,63 +359,6 @@ class MenuClass {
 };
 
 MenuClass Menus;
-
-enum remoteButtons {
-  //Remote
-  // const int volumeDown = 3; //- button wokwi simulator 152, real remote 3
-  // const int volumeUp = 2; //+ button wokwi simulator 2, real remote 2
-  // const int menuButton = 114; //task button wokwi simulator 226, real remote 114, key 5 = 53
-  // const int nextButton = 142; //key 6 = 54, remote 142
-  // const int prevButton = 143; //key 4 = 52, remote 143
-  // const int stopButton = 177; // key 1 = 49, remote 177
-  // const int pauseButton = 186; // key 3 = 51, remote 186
-  // const int playButton = 176; //play, remote 176
-  // const int power = 8;  //key 0 = 48 powe remote 8
-  //zelen 113, rumen 99, plavi 97, mute 9, pgup 0, pgdown 1, 
-  /* Buttons for Sharp remote:
-  NET 149      |   ON/OFF 233
-     1 254 | 2 253 |   3 252
-     4 251 | 5 250 |   6 249
-     7 248 | 8 247 |   9 246
-  <--> 216 | 0 254 |->[] 236
-  <> 55 | v/oo 231 | i+ 228 | FAV 86
-  vol+ 235  | 3D 76  | P^ 238
-  vol- 234  | EPG 92 | Pv 237 
-  mute 232 | MODE/AV 7 | ECO 200 | END 10
-           ^ 168
-     < 40 |OK 173| > 39
-           v 223
-  MENU 57            backArrow 27              
-       red 183 |    green 182 |   yellow 181 |    blue 180
-  teletext 203 | subtitles 96 |   ATV/DTV 95 |    RADIO 91
-    SOURCE 255 |      REC 250 | REC STOP 249 | USB REC 194
-        << 252 |       [] 253 |     >/II 254 |      >> 251 
-  */
-
-  //General (keyboard)
-  VOLUME_UP = 43, // -
-  VOLUME_DOWN = 45, // +
-  MENU = 53, // 5
-  POWER = 48, // 0
-  DEBUG = 42, // *
-
-  //Player control (keyboard)
-  NEXT = 54, // 6
-  PREVIOUS = 52, // 4
-  STOP = 49, // 1
-  PAUSE = 51, // 3
-  PLAY = 36 // home
-};
-
-enum menuAndTask {
-  NO_OF_MAIN_MENU_ITEMS = 4, //update this number if you add a main menu item
-  TV_MENU = 1,
-  BLUETOOTH_MENU = 2,
-  FM_MENU = 3,
-  AUX_MENU = 4,
-  VOLUME_MENU = 50,
-  ON_OFF_MENU = 100
-};
 
 //Asings what buttons do. They are also related to tasks() and menuControl() functionality
 void remoteControl() {
@@ -487,6 +540,8 @@ void tasks() {
     if (task != flag) {
       flag = task;
       detachAll();
+      digitalWrite(AUX_LEFT_PIN, LOW);
+      digitalWrite(AUX_RIGHT_PIN, LOW);
       digitalWrite(ON_OFF_5V_PIN, LOW);
       digitalWrite(ON_OFF_AC_PIN, LOW);
       Serial.println("OFF");
@@ -569,7 +624,7 @@ void setup() {
 }
 
 void debug() {
-  irReceivedData = Serial.read();
+  //irReceivedData = Serial.read(); // uncomment for keyboard control
   if (irReceivedData > 0) {
     Serial.print("|Keypress: ");
     Serial.print(irReceivedData);
@@ -579,7 +634,8 @@ void debug() {
 }
 
 void loop() {
-  //remoteDecodeSignal(); // comment it out for keyboard control
+  //decodeNewRemote(); //uncomment this and comment out remoteOnOff() decode a new remote
+  remoteOnOff(); // comment it out for keyboard control
   remoteControl();
   playerControl();
   menuControl();
