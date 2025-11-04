@@ -17,13 +17,12 @@ x make servo move for the non continouse one
 x set RTC variable for storinf servo position between restarts
 // set NVS variable for storing servos's position for accidental power offs
     // set that it won't store a new value into NVS if position didn't changed for X degrees
-- set buttons on IR remotes
+x set buttons on IR remotes
 x adjust bluetooth text lower
 x adjust vol/up/down text size
 x add relay control for V5 DC supply
 x add relay control for AC supply for the speakers
 x add AUX input support
-- add url radio connection timeout
 x add url radio station to the oled display
 x split the player contorls from the remote control funciton
 x add ENUMS
@@ -31,8 +30,11 @@ x disable remote controll and other buttons when the power is off, especially fo
 x optimize the playerControl() function
 x optimize the remoteControl() function
 x add debaunce for remote control
+- add url radio connection timeout
+- fix the power button isue
 - optimize deoubce for remote control
-- add connecting and connected to the display when using bluetooth
+- maybe split the remote and remote debounce functionality since for some buttons it has to be set at a different timeout
+x add connecting and connected to the display when using bluetooth
 - optimize the setup() code
 */
 
@@ -55,7 +57,6 @@ unsigned long myLastTime; //for implementing delays. For some reason it has to b
 int irReceivedData; //Stores the decodded button presses
 bool buttonState = false;
 unsigned long lastDebounceTime = 0;
-const unsigned long debounceDelay = 1000;
 
 // Physical Buttons
 #define BUTTON_A_PIN 27
@@ -96,11 +97,11 @@ BluetoothA2DPSink a2dp_sink(i2sOut);
 //Copying I2S stream from external SPDIF converter to external DAC. To actually run the stream you need to use copierInOut.copy() in loop()
 StreamCopy copierInOut(i2sOut, i2sIn);
 
-//Internet Radio
-const char* URLS[] = {
+//Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
+const char* URLS[] = { 
   "http://live.radio.si/Toti",
   "http://reflector.radionet.si:8000/stream.ogg",
-  "http://stream.srg-ssr.ch/m/drs3/mp3_128"
+  "http://livestreaming-node-3.srg-ssr.ch/srgssr/srf3/mp3/128"
 };
 
 const char* RADIO_STATION_NAMES[] = {
@@ -114,7 +115,8 @@ URLStream urlStream(WIFI, PASSWORD);
 AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
 MP3DecoderHelix decoder;
 AudioPlayer player(urlSource, i2sOut, decoder);
-Debouncer buttonDebouncer(2000); // for AudioPlayer
+Debouncer buttonDebouncer(); // for AudioPlayer
+
 
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
 enum oledSettings {
@@ -133,6 +135,7 @@ enum menuAndTask {
   FM_MENU = 3,
   AUX_MENU = 4,
   VOLUME_MENU = 50,
+  BLUETOOTH_CONNECTED = 51,
   ON_OFF_MENU = 100
 };
 
@@ -222,19 +225,17 @@ void decodeNewRemote() { //only used when decoding a new remote
 }
 
 void remoteDecodeSignal() {
+  const unsigned long DEBOUNCE_DELAY_IR = 500;
   irReceivedData = 0;
   if (IrReceiver.decode() && (!buttonState)) {
     lastDebounceTime = millis();
     buttonState = true;
     Serial.println(" PRESSED ");
-  }
-  if (((millis() - lastDebounceTime) > debounceDelay) && (buttonState)) {
     irReceivedData = IrReceiver.decodedIRData.command;
     Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
     Serial.println(irReceivedData);
-/*     irReceivedData = 0;
-    Serial.print(" irReceivedData = 0 =  ");
-    Serial.println(irReceivedData); */
+  }
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (buttonState)) {
     buttonState = false;
     IrReceiver.resume();
     Serial.print(" IrReceiver.resume() =  ");
@@ -252,7 +253,7 @@ void remoteOnOff() {
     IrReceiver.resume();
   }
   else {
-    irReceivedData = -1;
+    irReceivedData = 0;
     IrReceiver.resume();  
   }
 }
@@ -306,31 +307,6 @@ void isServoAttached() {
   }
 }
 
-/* unsigned long  myLastTimeTwo;
-bool attach = false;
-void servoAttachDetach() {
-  if (attach == true) {
-    if (myLastTimeTwo == 0) {
-        myLastTimeTwo = millis();
-    }
-      if ((millis() - myLastTimeTwo) >= 3000) {
-        myLastTimeTwo = 0;
-        attach = false;
-        myServo.detach();
-      }
-    myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
-    if (myLastTimeTwo == 0) {
-        myLastTimeTwo = millis();
-    }
-      if ((millis() - myLastTimeTwo) >= 3000) {
-        myLastTimeTwo = 0;
-        attach = false;
-        myServo.detach();
-      }
-  }
-}
- */
-
 class MenuClass {
   public:
   void mainMenuText(const char mainName[10]) {
@@ -341,9 +317,9 @@ class MenuClass {
     display.display(); 
     Serial.println(mainName);
   }
-  void mainMenuTextSmall(const char mainName[10]) {
+  void bluetoothMenu(const char mainName[10]) {
     display.clearDisplay();
-    display.setCursor(12, 30);
+    display.setCursor(0, 10);
     display.setTextSize(2);
     display.println(mainName);
     display.display(); 
@@ -429,6 +405,8 @@ void remoteControl() {
 }
 
 void playerControl() {
+  bool paused = false;
+
   switch(irReceivedData) {
     case NEXT:
     if (a2dp_sink.is_connected()) {
@@ -448,27 +426,18 @@ void playerControl() {
       player.previous();
       currentStation = (currentStation - 1 + (sizeof(URLS) / sizeof(URLS[0]))) % (sizeof(URLS) / sizeof(URLS[0]));
       Menus.radioMenu();
-    } 
-    break;
-    case STOP:
-    if (a2dp_sink.is_connected()) {
-      a2dp_sink.stop();
-    } 
-    else if (player.isActive()) { 
-      player.stop();
-    } 
-    break;
-    case PAUSE:
-    if (a2dp_sink.is_connected()) {
-      a2dp_sink.pause();
-    } 
+    }
     break;
     case PLAY:
     if (a2dp_sink.is_connected()) {
-      a2dp_sink.play();
-    } 
-    else if (player.isActive()) { 
-      player.play();
+      if (!paused) {
+        a2dp_sink.pause();
+        paused = true;
+      }
+      if (paused) {
+        a2dp_sink.play();
+        paused = false;
+      }
     } 
     break;
   }
@@ -487,7 +456,10 @@ void menuControl() {
     lastMenuSet();
     break;
     case BLUETOOTH_MENU:
-    Menus.mainMenuTextSmall("Bluetooth");
+    Menus.bluetoothMenu("Bluetooth");
+    display.setCursor(0, 40);
+    display.println("Connecting");
+    display.display();
     lastMenuSet();
     break;
     case FM_MENU:
@@ -503,10 +475,17 @@ void menuControl() {
     if (myLastTime == 0) {
       myLastTime = millis();
     }
-    if ((millis() - myLastTime) >= 1000) {
+    if ((millis() - myLastTime) > 1000) {
       myLastTime = 0;
       menu = lastMenu;
     }
+    break;
+    case BLUETOOTH_CONNECTED:
+    Menus.bluetoothMenu("Bluetooth");
+    display.setCursor(0, 40);
+    display.println("Connected");
+    display.display();
+    lastMenuSet();
     break;
   }
 }
@@ -516,8 +495,11 @@ void flagTaskSet() {
   menu = task;
 }
 
+bool connected = false;
 //Tasks related to actual connection to the audio
 void tasks() {
+
+
   switch (task) {
     case TV_MENU:
     if (task != flag) { //inside this if is the "setup" code, it runs once
@@ -527,8 +509,16 @@ void tasks() {
     break;
     case BLUETOOTH_MENU:
     if (task != flag) {
-      flagTaskSet();
+      flag = task;
       a2dp_sink.start("MojAudio");
+    }
+    if (!a2dp_sink.is_connected() && (!connected)) {
+      menu = BLUETOOTH_MENU;
+      connected = true;
+    }
+    if (a2dp_sink.is_connected() && (connected)) {
+      menu = BLUETOOTH_CONNECTED;
+      connected = false;
     }
     break;
     case FM_MENU:
