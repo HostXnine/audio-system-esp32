@@ -31,11 +31,11 @@ x optimize the playerControl() function
 x optimize the remoteControl() function
 x add debaunce for remote control
 - add url radio connection timeout
-- fix the power button isue
+? fix the power button isue
 - optimize deoubce for remote control
 - maybe split the remote and remote debounce functionality since for some buttons it has to be set at a different timeout
 x add connecting and connected to the display when using bluetooth
-- optimize the setup() code
+x optimize the setup() code
 */
 
 // Tasks and menu control global variables
@@ -46,7 +46,7 @@ int lastMenu;
 esp_reset_reason_t resetReason = esp_reset_reason();
 unsigned long myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
 
-// Relay setup
+// Relays
 #define ON_OFF_5V_PIN 13
 #define ON_OFF_AC_PIN 26
 #define AUX_LEFT_PIN 25
@@ -55,7 +55,7 @@ unsigned long myLastTime; //for implementing delays. For some reason it has to b
 // IR
 #define IR_RECEIVE_PIN 19
 int irReceivedData; //Stores the decodded button presses
-bool buttonState = false;
+bool irState = false;
 unsigned long lastDebounceTime = 0;
 
 // Physical Buttons
@@ -97,7 +97,6 @@ BluetoothA2DPSink a2dp_sink(i2sOut);
 //Copying I2S stream from external SPDIF converter to external DAC. To actually run the stream you need to use copierInOut.copy() in loop()
 StreamCopy copierInOut(i2sOut, i2sIn);
 
-
 //Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
 const char* URLS[] = { 
   "http://live.radio.si/Toti",
@@ -108,7 +107,7 @@ const char* URLS[] = {
 const char* RADIO_STATION_NAMES[] = {
   "Toti Radio",
   "NET FM",
-  "Swiss Radio"
+  "Swiss Radi"
 };
 int currentStation = 0;
 
@@ -117,7 +116,6 @@ AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
 MP3DecoderHelix decoder;
 AudioPlayer player(urlSource, i2sOut, decoder);
 //Debouncer buttonDebouncer(); // for AudioPlayer
-
 
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
 enum oledSettings {
@@ -217,16 +215,16 @@ void decodeNewRemote() { //only used when decoding a new remote
 void remoteDecodeSignal() {
   const unsigned long DEBOUNCE_DELAY_IR = 500;
   irReceivedData = 0;
-  if (IrReceiver.decode() && (!buttonState)) {
+  if (IrReceiver.decode() && (!irState)) {
     lastDebounceTime = millis();
-    buttonState = true;
+    irState = true;
     Serial.println(" PRESSED ");
     irReceivedData = IrReceiver.decodedIRData.command;
     Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
     Serial.println(irReceivedData);
   }
-  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (buttonState)) {
-    buttonState = false;
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irState)) {
+    irState = false;
     IrReceiver.resume();
     Serial.print(" IrReceiver.resume() =  ");
     Serial.println(irReceivedData);
@@ -381,8 +379,9 @@ void remoteControl() {
     case POWER:
     if (task < ON_OFF_MENU) {
       task = ON_OFF_MENU;
+      return;
     }
-    else if (task == ON_OFF_MENU) {
+    if (task == ON_OFF_MENU) {
       task = 1;
       irReceivedData = 0;
       restart();
@@ -524,8 +523,8 @@ void tasks() {
     break;
     case ON_OFF_MENU:
     if (task != flag) {
-      powerRelaySetup();
       flag = task;
+      powerRelaySetup();
       detachAll();
       digitalWrite(AUX_LEFT_PIN, LOW);
       digitalWrite(AUX_RIGHT_PIN, LOW);
@@ -537,7 +536,6 @@ void tasks() {
   }
 }
 
-
 void powerRelaySetup() {
   Serial.println("Relays setup");
   pinMode(ON_OFF_5V_PIN, OUTPUT);
@@ -547,7 +545,8 @@ void powerRelaySetup() {
   digitalWrite(ON_OFF_AC_PIN, HIGH);
 }
 
-void auxRelaySetup() {  
+void auxRelaySetup() {
+  Serial.println("AUX setup");
   pinMode(AUX_LEFT_PIN, OUTPUT);
   digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
   
@@ -556,6 +555,7 @@ void auxRelaySetup() {
 }
 
 void isServoAttached() {
+  Serial.println("isServoAttached");
   if (myServo.attached() == false) { 
     myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
     position = postitionRtc;
