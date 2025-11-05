@@ -97,6 +97,7 @@ BluetoothA2DPSink a2dp_sink(i2sOut);
 //Copying I2S stream from external SPDIF converter to external DAC. To actually run the stream you need to use copierInOut.copy() in loop()
 StreamCopy copierInOut(i2sOut, i2sIn);
 
+
 //Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
 const char* URLS[] = { 
   "http://live.radio.si/Toti",
@@ -115,7 +116,8 @@ URLStream urlStream(WIFI, PASSWORD);
 AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
 MP3DecoderHelix decoder;
 AudioPlayer player(urlSource, i2sOut, decoder);
-Debouncer buttonDebouncer(); // for AudioPlayer
+//Debouncer buttonDebouncer(); // for AudioPlayer
+
 
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
 enum oledSettings {
@@ -288,12 +290,7 @@ void restart() {
 }
 
 //Checks if servo is attached, if not it attaches it. Don't put servo attach in setup() because it makes it jitter.
-void isServoAttached() {
-  if (myServo.attached() == false) { 
-    myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
-    position = postitionRtc;
-  }
-}
+void isServoAttached();
 
 class MenuClass {
   public:
@@ -397,7 +394,7 @@ void remoteControl() {
 bool paused = false;
 
 void playerControl() {
-  
+  int sizeOfUrls = (sizeof(URLS) / sizeof(URLS[0]));
 
   switch(irReceivedData) {
     case NEXT:
@@ -406,7 +403,7 @@ void playerControl() {
     } 
     else if (player.isActive()) {
       player.next();
-      currentStation = (currentStation + 1) % (sizeof(URLS) / sizeof(URLS[0]));
+      currentStation = ((currentStation + 1) % sizeOfUrls);
       Menus.radioMenu();
     } 
     break;
@@ -416,7 +413,7 @@ void playerControl() {
     } 
     else if (player.isActive()) {
       player.previous();
-      currentStation = (currentStation - 1 + (sizeof(URLS) / sizeof(URLS[0]))) % (sizeof(URLS) / sizeof(URLS[0]));
+      currentStation = ((currentStation - 1 + sizeOfUrls) % sizeOfUrls);
       Menus.radioMenu();
     }
     break;
@@ -440,6 +437,7 @@ void lastMenuSet() {
   lastMenu = menu;
   menu = 0;
 }
+
 void menuControl() {
   switch (menu) {
     case TV_MENU:
@@ -480,11 +478,14 @@ void flagTaskSet() {
 }
 
 bool connected = false;
-
+void powerRelaySetup();
+void auxRelaySetup();
+void i2sInSetup();
 void tasks() {
   switch (task) {
     case TV_MENU:
     if (task != flag) { //inside this if is the "setup" code, it runs once
+      i2sInSetup();
       flagTaskSet();
     }
     copierInOut.copy(); // outside the above if is the "loop" code
@@ -513,6 +514,7 @@ void tasks() {
     break;
     case AUX_MENU:
     if (task != flag) {
+      auxRelaySetup();
       flagTaskSet();
       if (digitalRead(AUX_LEFT_PIN) == LOW || digitalRead(AUX_RIGHT_PIN) == LOW) {
         digitalWrite(AUX_LEFT_PIN, HIGH);
@@ -522,6 +524,7 @@ void tasks() {
     break;
     case ON_OFF_MENU:
     if (task != flag) {
+      powerRelaySetup();
       flag = task;
       detachAll();
       digitalWrite(AUX_LEFT_PIN, LOW);
@@ -532,6 +535,44 @@ void tasks() {
     }
     break;
   }
+}
+
+
+void powerRelaySetup() {
+  Serial.println("Relays setup");
+  pinMode(ON_OFF_5V_PIN, OUTPUT);
+  digitalWrite(ON_OFF_5V_PIN, HIGH);
+  
+  pinMode(ON_OFF_AC_PIN, OUTPUT);
+  digitalWrite(ON_OFF_AC_PIN, HIGH);
+}
+
+void auxRelaySetup() {  
+  pinMode(AUX_LEFT_PIN, OUTPUT);
+  digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
+  
+  pinMode(AUX_RIGHT_PIN, OUTPUT);
+  digitalWrite(AUX_RIGHT_PIN, LOW);
+}
+
+void isServoAttached() {
+  if (myServo.attached() == false) { 
+    myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
+    position = postitionRtc;
+  }
+}
+
+void i2sInSetup() {
+  Serial.println("I2S in setup");
+  auto cfgIn = i2sIn.defaultConfig(RX_MODE);
+  cfgIn.copyFrom(info);
+  cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
+  cfgIn.is_master = false;
+  cfgIn.port_no = 0;
+  cfgIn.pin_ws = IN_I2S_WS_PIN;
+  cfgIn.pin_bck = IN_I2S_BCK_PIN;
+  cfgIn.pin_data = IN_I2S_DATA_PIN;
+  i2sIn.begin(cfgIn);
 }
 
 void setup() {
@@ -548,20 +589,6 @@ void setup() {
     Serial.println("calibrating positionRTC setup");
     postitionRtc = SERVO_MIN+500;
   }
-  
-  //Relays
-  Serial.println("Relays setup");
-  pinMode(ON_OFF_5V_PIN, OUTPUT);
-  digitalWrite(ON_OFF_5V_PIN, HIGH);
-  
-  pinMode(ON_OFF_AC_PIN, OUTPUT);
-  digitalWrite(ON_OFF_AC_PIN, HIGH);
-  
-  pinMode(AUX_LEFT_PIN, OUTPUT);
-  digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
-  
-  pinMode(AUX_RIGHT_PIN, OUTPUT);
-  digitalWrite(AUX_RIGHT_PIN, LOW);
 
   //IR
   Serial.println("IR setup");
@@ -578,18 +605,6 @@ void setup() {
   display.setContrast (0);
   display.setTextColor(SH110X_WHITE);
 
-  //I2S in
-  Serial.println("I2S in setup");
-  auto cfgIn = i2sIn.defaultConfig(RX_MODE);
-  cfgIn.copyFrom(info);
-  cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
-  cfgIn.is_master = false;
-  cfgIn.port_no = 0;
-  cfgIn.pin_ws = IN_I2S_WS_PIN;
-  cfgIn.pin_bck = IN_I2S_BCK_PIN;
-  cfgIn.pin_data = IN_I2S_DATA_PIN;
-  i2sIn.begin(cfgIn);
-
   //I2S out
   Serial.println("I2S out setup"); 
   auto cfgOut = i2sOut.defaultConfig(TX_MODE);
@@ -601,8 +616,6 @@ void setup() {
   cfgOut.pin_bck = OUT_I2S_BCK_PIN;
   cfgOut.pin_data = OUT_I2S_DATA_PIN;
   i2sOut.begin(cfgOut);
-  
-  //Servo is attached in isServoAttached() function when needed
 
   Serial.println("Setup done");
 }
