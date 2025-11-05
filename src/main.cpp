@@ -68,7 +68,7 @@ RTC_NOINIT_ATTR int postitionRtc; // servo postition stored in ms
 const int SERVO_MIN = 510;
 const int SERVO_MAX = 2510;
 int position = SERVO_MIN; // servo position stored in ms
-int step = 10; // Sservo's one step movement in ms
+int step = 10; // Servo's one step movement in ms
 Servo myServo;
 
 //Servo is still at 1490 - 1540 if you use a 360 (SG90) servo. Speed min 900 - max 2100. Ideal stop pint is 1515 ms.
@@ -117,7 +117,6 @@ MP3DecoderHelix decoder;
 AudioPlayer player(urlSource, i2sOut, decoder);
 Debouncer buttonDebouncer(); // for AudioPlayer
 
-
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
 enum oledSettings {
   SCREEN_ADDRESS = 0x3C, ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
@@ -140,18 +139,8 @@ enum menuAndTask {
 };
 
 enum remoteButtons {
-  //Remote
-  // const int volumeDown = 3; //- button wokwi simulator 152, real remote 3
-  // const int volumeUp = 2; //+ button wokwi simulator 2, real remote 2
-  // const int menuButton = 114; //task button wokwi simulator 226, real remote 114, key 5 = 53
-  // const int nextButton = 142; //key 6 = 54, remote 142
-  // const int prevButton = 143; //key 4 = 52, remote 143
-  // const int stopButton = 177; // key 1 = 49, remote 177
-  // const int pauseButton = 186; // key 3 = 51, remote 186
-  // const int playButton = 176; //play, remote 176
-  // const int power = 8;  //key 0 = 48 powe remote 8
-  //zelen 113, rumen 99, plavi 97, mute 9, pgup 0, pgdown 1, 
-  /* Buttons for Sharp remote it uses DECODE_DENON:
+  /* Buttons for Sharp and NEC
+  Buttons for Sharp remote it uses DECODE_DENON:
   NET 149      |   ON/OFF 233
      1 254 | 2 253 |   3 252
      4 251 | 5 250 |   6 249
@@ -169,8 +158,8 @@ enum remoteButtons {
   teletext 203 | subtitles 96 |   ATV/DTV 95 |    RADIO 91
     SOURCE 255 |      REC 250 | REC STOP 249 | USB REC 194
         << 252 |       [] 253 |     >/II 254 |      >> 251 
-  */
-  /* Buttons on VCR remote. I uses DECODE_NEC
+
+  Buttons on VCR remote. I uses DECODE_NEC
   Operate 20
   1  5 | 2  6 | 3  7
   4 12 | 5 13 | 6 14
@@ -198,7 +187,6 @@ enum remoteButtons {
   VOLUME_UP = 43, // -
   VOLUME_DOWN = 45, // +
   DEBUG = 42, // *
-
   //Player control (keyboard)
   NEXT = 54, // 6
   PREVIOUS = 52, // 4
@@ -309,19 +297,21 @@ void isServoAttached() {
 
 class MenuClass {
   public:
-  void mainMenuText(const char mainName[10]) {
+  void mainMenuText(const char mainName[10], int16_t x, int16_t y, int8_t size) {
     display.clearDisplay();
-    display.setCursor(30, 12);
-    display.setTextSize(5);
+    display.setCursor(x, y);
+    display.setTextSize(size);
     display.println(mainName);
     display.display(); 
     Serial.println(mainName);
   }
-  void bluetoothMenu(const char mainName[10]) {
+  void bluetoothMenu(const char mainName[10], const char status[10]) {
     display.clearDisplay();
     display.setCursor(0, 10);
     display.setTextSize(2);
     display.println(mainName);
+    display.setCursor(0, 40);
+    display.println(status);
     display.display(); 
     Serial.println(mainName);
   }
@@ -404,8 +394,10 @@ void remoteControl() {
   }
 }
 
+bool paused = false;
+
 void playerControl() {
-  bool paused = false;
+  
 
   switch(irReceivedData) {
     case NEXT:
@@ -443,31 +435,29 @@ void playerControl() {
   }
 }
 
+// Only to define menu control as seen on the oled screen.
 void lastMenuSet() {
   lastMenu = menu;
   menu = 0;
 }
-
-// Only to define menu control as seen on the oled screen.
 void menuControl() {
   switch (menu) {
     case TV_MENU:
-    Menus.mainMenuText("TV");
+    Menus.mainMenuText("TV", 30, 12, 5);
     lastMenuSet();
     break;
     case BLUETOOTH_MENU:
-    Menus.bluetoothMenu("Bluetooth");
-    display.setCursor(0, 40);
-    display.println("Connecting");
-    display.display();
-    lastMenuSet();
+    Menus.bluetoothMenu("Bluetooth", "Connecting");
+    break;
+    case BLUETOOTH_CONNECTED:
+    Menus.bluetoothMenu("Bluetooth", "Connected");
     break;
     case FM_MENU:
     Menus.radioMenu();
     lastMenuSet();
     break;
     case AUX_MENU:
-    Menus.mainMenuText("AUX");
+    Menus.mainMenuText("AUX", 10, 12, 5);
     lastMenuSet();
     break;
     case VOLUME_MENU:
@@ -480,26 +470,18 @@ void menuControl() {
       menu = lastMenu;
     }
     break;
-    case BLUETOOTH_CONNECTED:
-    Menus.bluetoothMenu("Bluetooth");
-    display.setCursor(0, 40);
-    display.println("Connected");
-    display.display();
-    lastMenuSet();
-    break;
   }
 }
 
+//Tasks
 void flagTaskSet() {
   flag = task;
   menu = task;
 }
 
 bool connected = false;
-//Tasks related to actual connection to the audio
+
 void tasks() {
-
-
   switch (task) {
     case TV_MENU:
     if (task != flag) { //inside this if is the "setup" code, it runs once
