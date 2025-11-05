@@ -207,9 +207,27 @@ void decodeNewRemote() { //only used when decoding a new remote
     IrReceiver.resume();
   } 
   else {
-    irReceivedData = -1;
+    irReceivedData = 0;
     IrReceiver.resume();
   } 
+}
+
+void remoteDebounceOnly(uint16_t &button, const unsigned long DEBOUNCE_DELAY_IR) {
+  irReceivedData = 0;
+  if (IrReceiver.decode() && (!irState)) {
+    lastDebounceTime = millis();
+    irState = true;
+    Serial.println(" PRESSED ");
+    irReceivedData = IrReceiver.decodedIRData.command;
+    Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
+    Serial.println(irReceivedData);
+  }
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irState)) {
+    irState = false;
+    IrReceiver.resume();
+    Serial.print(" IrReceiver.resume() =  ");
+    Serial.println(irReceivedData);
+  }
 }
 
 void remoteDecodeSignal() {
@@ -236,13 +254,17 @@ void remoteOnOff() {
     remoteDecodeSignal();
     return;
   }
-  if (IrReceiver.decode() && IrReceiver.decodedIRData.command == POWER) {
-    irReceivedData = POWER;
+  if ((task == ON_OFF_MENU) && (irState))  {
+    irState = false;
     IrReceiver.resume();
   }
-  else {
-    irReceivedData = 0;
-    IrReceiver.resume();  
+  if (!IrReceiver.decode()) {
+    return;
+  }
+  if (IrReceiver.decodedIRData.command == POWER && !irState) {
+    irReceivedData = POWER;
+  } else {
+    IrReceiver.resume();
   }
 }
 
@@ -334,6 +356,7 @@ class MenuClass {
 MenuClass Menus;
 
 //Asings what buttons do. They are also related to tasks() and menuControl() functionality
+
 void remoteControl() {
 
   int buttonAState = digitalRead(BUTTON_A_PIN);
@@ -377,13 +400,13 @@ void remoteControl() {
     }
     break;
     case POWER:
-    if (task < ON_OFF_MENU) {
+    irReceivedData = 0;
+    if (task != ON_OFF_MENU) {
       task = ON_OFF_MENU;
       return;
     }
     if (task == ON_OFF_MENU) {
-      task = 1;
-      irReceivedData = 0;
+      task = TV_MENU;
       restart();
     }
     break;
@@ -477,8 +500,6 @@ void flagTaskSet() {
 }
 
 bool connected = false;
-void powerRelaySetup();
-void auxRelaySetup();
 void i2sInSetup();
 void tasks() {
   switch (task) {
@@ -513,7 +534,6 @@ void tasks() {
     break;
     case AUX_MENU:
     if (task != flag) {
-      auxRelaySetup();
       flagTaskSet();
       if (digitalRead(AUX_LEFT_PIN) == LOW || digitalRead(AUX_RIGHT_PIN) == LOW) {
         digitalWrite(AUX_LEFT_PIN, HIGH);
@@ -524,34 +544,16 @@ void tasks() {
     case ON_OFF_MENU:
     if (task != flag) {
       flag = task;
-      powerRelaySetup();
       detachAll();
       digitalWrite(AUX_LEFT_PIN, LOW);
       digitalWrite(AUX_RIGHT_PIN, LOW);
       digitalWrite(ON_OFF_5V_PIN, LOW);
       digitalWrite(ON_OFF_AC_PIN, LOW);
-      Serial.println("OFF");
+      Serial.print("OFF  ");
+      Serial.println(irState);
     }
     break;
   }
-}
-
-void powerRelaySetup() {
-  Serial.println("Relays setup");
-  pinMode(ON_OFF_5V_PIN, OUTPUT);
-  digitalWrite(ON_OFF_5V_PIN, HIGH);
-  
-  pinMode(ON_OFF_AC_PIN, OUTPUT);
-  digitalWrite(ON_OFF_AC_PIN, HIGH);
-}
-
-void auxRelaySetup() {
-  Serial.println("AUX setup");
-  pinMode(AUX_LEFT_PIN, OUTPUT);
-  digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
-  
-  pinMode(AUX_RIGHT_PIN, OUTPUT);
-  digitalWrite(AUX_RIGHT_PIN, LOW);
 }
 
 void isServoAttached() {
@@ -589,6 +591,18 @@ void setup() {
     Serial.println("calibrating positionRTC setup");
     postitionRtc = SERVO_MIN+500;
   }
+
+  //Relays
+  Serial.println("Relays setup");
+  pinMode(ON_OFF_5V_PIN, OUTPUT);
+  digitalWrite(ON_OFF_5V_PIN, HIGH);
+  pinMode(ON_OFF_AC_PIN, OUTPUT);
+  digitalWrite(ON_OFF_AC_PIN, HIGH);
+  Serial.println("AUX setup");
+  pinMode(AUX_LEFT_PIN, OUTPUT);
+  digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
+  pinMode(AUX_RIGHT_PIN, OUTPUT);
+  digitalWrite(AUX_RIGHT_PIN, LOW);
 
   //IR
   Serial.println("IR setup");
