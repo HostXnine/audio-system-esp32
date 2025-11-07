@@ -31,7 +31,7 @@ x optimize the playerControl() function
 x optimize the remoteControl() function
 x add debaunce for remote control
 - add url radio connection timeout
-? fix the power button isue
+x fix the power button isue
 - optimize deoubce for remote control
 - maybe split the remote and remote debounce functionality since for some buttons it has to be set at a different timeout
 x add connecting and connected to the display when using bluetooth
@@ -39,12 +39,12 @@ x optimize the setup() code
 */
 
 // Tasks and menu control global variables
-RTC_NOINIT_ATTR int task; //RTC variable survive restarts
-int flag;
-int menu;
-int lastMenu;
+RTC_NOINIT_ATTR uint8_t task; //RTC variable survive restarts
+uint8_t flag;
+uint8_t menu;
+uint8_t lastMenu;
 esp_reset_reason_t resetReason = esp_reset_reason();
-unsigned long myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
+uint32_t myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
 
 // Relays
 #define ON_OFF_5V_PIN 13
@@ -54,9 +54,9 @@ unsigned long myLastTime; //for implementing delays. For some reason it has to b
 
 // IR
 #define IR_RECEIVE_PIN 19
-int irReceivedData; //Stores the decodded button presses
+uint16_t irReceivedData; //Stores the decodded button presses
 bool irState = false;
-unsigned long lastDebounceTime = 0;
+uint32_t lastDebounceTime = 0;
 
 // Physical Buttons
 #define BUTTON_A_PIN 27
@@ -65,10 +65,10 @@ unsigned long lastDebounceTime = 0;
 // Serov
 #define SERVO_PIN 23 //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
 RTC_NOINIT_ATTR int postitionRtc; // servo postition stored in ms
-const int SERVO_MIN = 510;
-const int SERVO_MAX = 2510;
-int position = SERVO_MIN; // servo position stored in ms
-int step = 10; // Servo's one step movement in ms
+constexpr uint16_t SERVO_MIN = 510;
+constexpr uint16_t SERVO_MAX = 2510;
+uint16_t position = SERVO_MIN; // servo position stored in ms
+uint16_t step = 10; // Servo's one step movement in ms
 Servo myServo;
 
 //Servo is still at 1490 - 1540 if you use a 360 (SG90) servo. Speed min 900 - max 2100. Ideal stop pint is 1515 ms.
@@ -98,18 +98,18 @@ BluetoothA2DPSink a2dp_sink(i2sOut);
 StreamCopy copierInOut(i2sOut, i2sIn);
 
 //Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
-const char* URLS[] = { 
+const char* URLS[3] = { 
   "http://live.radio.si/Toti",
   "http://reflector.radionet.si:8000/stream.ogg",
   "http://livestreaming-node-3.srg-ssr.ch/srgssr/srf3/mp3/128"
 };
 
-const char* RADIO_STATION_NAMES[] = {
+const char* RADIO_STATION_NAMES[3] = {
   "Toti Radio",
   "NET FM",
-  "Swiss Radi"
+  "Swiss"
 };
-int currentStation = 0;
+uint8_t currentStation = 0;
 
 URLStream urlStream(WIFI, PASSWORD);
 AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
@@ -359,8 +359,8 @@ MenuClass Menus;
 
 void remoteControl() {
 
-  int buttonAState = digitalRead(BUTTON_A_PIN);
-  int buttonBState = digitalRead(BUTTON_B_PIN);
+  uint8_t buttonAState = digitalRead(BUTTON_A_PIN);
+  uint8_t buttonBState = digitalRead(BUTTON_B_PIN);
 
   if (buttonAState == HIGH) {
     irReceivedData = VOLUME_UP;
@@ -416,7 +416,7 @@ void remoteControl() {
 bool paused = false;
 
 void playerControl() {
-  int sizeOfUrls = (sizeof(URLS) / sizeof(URLS[0]));
+  int8_t sizeOfUrls = (sizeof(URLS) / sizeof(URLS[0]));
 
   switch(irReceivedData) {
     case NEXT:
