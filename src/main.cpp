@@ -13,29 +13,11 @@
 #include <IRremote.hpp>
 
 /*To do list:
-x make servo move for the non continouse one
-x set RTC variable for storinf servo position between restarts
-// set NVS variable for storing servos's position for accidental power offs
-    // set that it won't store a new value into NVS if position didn't changed for X degrees
-x set buttons on IR remotes
-x adjust bluetooth text lower
-x adjust vol/up/down text size
-x add relay control for V5 DC supply
-x add relay control for AC supply for the speakers
-x add AUX input support
-x add url radio station to the oled display
-x split the player contorls from the remote control funciton
-x add ENUMS
-x disable remote controll and other buttons when the power is off, especially for the volume buttons
-x optimize the playerControl() function
-x optimize the remoteControl() function
-x add debaunce for remote control
 - add url radio connection timeout
-x fix the power button isue
+- fix broken functionality when bluetooth is selected
+- fix spageti code in tasks and menuControl
 - optimize deoubce for remote control
 - maybe split the remote and remote debounce functionality since for some buttons it has to be set at a different timeout
-x add connecting and connected to the display when using bluetooth
-x optimize the setup() code
 */
 
 // Tasks and menu control global variables
