@@ -13,40 +13,22 @@
 #include <IRremote.hpp>
 
 /*To do list:
-x make servo move for the non continouse one
-x set RTC variable for storinf servo position between restarts
-// set NVS variable for storing servos's position for accidental power offs
-    // set that it won't store a new value into NVS if position didn't changed for X degrees
-x set buttons on IR remotes
-x adjust bluetooth text lower
-x adjust vol/up/down text size
-x add relay control for V5 DC supply
-x add relay control for AC supply for the speakers
-x add AUX input support
-x add url radio station to the oled display
-x split the player contorls from the remote control funciton
-x add ENUMS
-x disable remote controll and other buttons when the power is off, especially for the volume buttons
-x optimize the playerControl() function
-x optimize the remoteControl() function
-x add debaunce for remote control
 - add url radio connection timeout
-- fix the power button isue
+- fix broken functionality when bluetooth is selected
+- fix spageti code in tasks and menuControl
 - optimize deoubce for remote control
 - maybe split the remote and remote debounce functionality since for some buttons it has to be set at a different timeout
-x add connecting and connected to the display when using bluetooth
-- optimize the setup() code
 */
 
 // Tasks and menu control global variables
-RTC_NOINIT_ATTR int task; //RTC variable survive restarts
-int flag;
-int menu;
-int lastMenu;
+RTC_NOINIT_ATTR uint8_t task; //RTC variable survive restarts
+uint8_t flag;
+uint8_t menu;
+uint8_t lastMenu;
 esp_reset_reason_t resetReason = esp_reset_reason();
-unsigned long myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
+uint32_t myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
 
-// Relay setup
+// Relays
 #define ON_OFF_5V_PIN 13
 #define ON_OFF_AC_PIN 26
 #define AUX_LEFT_PIN 25
@@ -54,9 +36,9 @@ unsigned long myLastTime; //for implementing delays. For some reason it has to b
 
 // IR
 #define IR_RECEIVE_PIN 19
-int irReceivedData; //Stores the decodded button presses
-bool buttonState = false;
-unsigned long lastDebounceTime = 0;
+uint16_t irReceivedData; //Stores the decodded button presses
+bool irState = false;
+uint32_t lastDebounceTime = 0;
 
 // Physical Buttons
 #define BUTTON_A_PIN 27
@@ -65,10 +47,10 @@ unsigned long lastDebounceTime = 0;
 // Serov
 #define SERVO_PIN 23 //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
 RTC_NOINIT_ATTR int postitionRtc; // servo postition stored in ms
-const int SERVO_MIN = 510;
-const int SERVO_MAX = 2510;
-int position = SERVO_MIN; // servo position stored in ms
-int step = 10; // Sservo's one step movement in ms
+constexpr uint16_t SERVO_MIN = 510;
+constexpr uint16_t SERVO_MAX = 2510;
+uint16_t position = SERVO_MIN; // servo position stored in ms
+uint16_t step = 10; // Servo's one step movement in ms
 Servo myServo;
 
 //Servo is still at 1490 - 1540 if you use a 360 (SG90) servo. Speed min 900 - max 2100. Ideal stop pint is 1515 ms.
@@ -98,25 +80,24 @@ BluetoothA2DPSink a2dp_sink(i2sOut);
 StreamCopy copierInOut(i2sOut, i2sIn);
 
 //Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
-const char* URLS[] = { 
+const char* URLS[3] = { 
   "http://live.radio.si/Toti",
   "http://reflector.radionet.si:8000/stream.ogg",
   "http://livestreaming-node-3.srg-ssr.ch/srgssr/srf3/mp3/128"
 };
 
-const char* RADIO_STATION_NAMES[] = {
+const char* RADIO_STATION_NAMES[3] = {
   "Toti Radio",
   "NET FM",
-  "Swiss Radio"
+  "Swiss"
 };
-int currentStation = 0;
+uint8_t currentStation = 0;
 
 URLStream urlStream(WIFI, PASSWORD);
 AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
 MP3DecoderHelix decoder;
 AudioPlayer player(urlSource, i2sOut, decoder);
-Debouncer buttonDebouncer(); // for AudioPlayer
-
+//Debouncer buttonDebouncer(); // for AudioPlayer
 
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
 enum oledSettings {
@@ -140,18 +121,8 @@ enum menuAndTask {
 };
 
 enum remoteButtons {
-  //Remote
-  // const int volumeDown = 3; //- button wokwi simulator 152, real remote 3
-  // const int volumeUp = 2; //+ button wokwi simulator 2, real remote 2
-  // const int menuButton = 114; //task button wokwi simulator 226, real remote 114, key 5 = 53
-  // const int nextButton = 142; //key 6 = 54, remote 142
-  // const int prevButton = 143; //key 4 = 52, remote 143
-  // const int stopButton = 177; // key 1 = 49, remote 177
-  // const int pauseButton = 186; // key 3 = 51, remote 186
-  // const int playButton = 176; //play, remote 176
-  // const int power = 8;  //key 0 = 48 powe remote 8
-  //zelen 113, rumen 99, plavi 97, mute 9, pgup 0, pgdown 1, 
-  /* Buttons for Sharp remote it uses DECODE_DENON:
+  /* Buttons for Sharp and NEC
+  Buttons for Sharp remote it uses DECODE_DENON:
   NET 149      |   ON/OFF 233
      1 254 | 2 253 |   3 252
      4 251 | 5 250 |   6 249
@@ -169,8 +140,8 @@ enum remoteButtons {
   teletext 203 | subtitles 96 |   ATV/DTV 95 |    RADIO 91
     SOURCE 255 |      REC 250 | REC STOP 249 | USB REC 194
         << 252 |       [] 253 |     >/II 254 |      >> 251 
-  */
-  /* Buttons on VCR remote. I uses DECODE_NEC
+
+  Buttons on VCR remote. I uses DECODE_NEC
   Operate 20
   1  5 | 2  6 | 3  7
   4 12 | 5 13 | 6 14
@@ -198,7 +169,6 @@ enum remoteButtons {
   VOLUME_UP = 43, // -
   VOLUME_DOWN = 45, // +
   DEBUG = 42, // *
-
   //Player control (keyboard)
   NEXT = 54, // 6
   PREVIOUS = 52, // 4
@@ -219,24 +189,42 @@ void decodeNewRemote() { //only used when decoding a new remote
     IrReceiver.resume();
   } 
   else {
-    irReceivedData = -1;
+    irReceivedData = 0;
     IrReceiver.resume();
   } 
 }
 
-void remoteDecodeSignal() {
-  const unsigned long DEBOUNCE_DELAY_IR = 500;
+void remoteDebounceOnly(uint16_t &button, const unsigned long DEBOUNCE_DELAY_IR) {
   irReceivedData = 0;
-  if (IrReceiver.decode() && (!buttonState)) {
+  if (IrReceiver.decode() && (!irState)) {
     lastDebounceTime = millis();
-    buttonState = true;
+    irState = true;
     Serial.println(" PRESSED ");
     irReceivedData = IrReceiver.decodedIRData.command;
     Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
     Serial.println(irReceivedData);
   }
-  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (buttonState)) {
-    buttonState = false;
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irState)) {
+    irState = false;
+    IrReceiver.resume();
+    Serial.print(" IrReceiver.resume() =  ");
+    Serial.println(irReceivedData);
+  }
+}
+
+void remoteDecodeSignal() {
+  const unsigned long DEBOUNCE_DELAY_IR = 500;
+  irReceivedData = 0;
+  if (IrReceiver.decode() && (!irState)) {
+    lastDebounceTime = millis();
+    irState = true;
+    Serial.println(" PRESSED ");
+    irReceivedData = IrReceiver.decodedIRData.command;
+    Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
+    Serial.println(irReceivedData);
+  }
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irState)) {
+    irState = false;
     IrReceiver.resume();
     Serial.print(" IrReceiver.resume() =  ");
     Serial.println(irReceivedData);
@@ -248,13 +236,17 @@ void remoteOnOff() {
     remoteDecodeSignal();
     return;
   }
-  if (IrReceiver.decode() && IrReceiver.decodedIRData.command == POWER) {
-    irReceivedData = POWER;
+  if ((task == ON_OFF_MENU) && (irState))  {
+    irState = false;
     IrReceiver.resume();
   }
-  else {
-    irReceivedData = 0;
-    IrReceiver.resume();  
+  if (!IrReceiver.decode()) {
+    return;
+  }
+  if (IrReceiver.decodedIRData.command == POWER && !irState) {
+    irReceivedData = POWER;
+  } else {
+    IrReceiver.resume();
   }
 }
 
@@ -300,28 +292,25 @@ void restart() {
 }
 
 //Checks if servo is attached, if not it attaches it. Don't put servo attach in setup() because it makes it jitter.
-void isServoAttached() {
-  if (myServo.attached() == false) { 
-    myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
-    position = postitionRtc;
-  }
-}
+void isServoAttached();
 
 class MenuClass {
   public:
-  void mainMenuText(const char mainName[10]) {
+  void mainMenuText(const char mainName[10], int16_t x, int16_t y, int8_t size) {
     display.clearDisplay();
-    display.setCursor(30, 12);
-    display.setTextSize(5);
+    display.setCursor(x, y);
+    display.setTextSize(size);
     display.println(mainName);
     display.display(); 
     Serial.println(mainName);
   }
-  void bluetoothMenu(const char mainName[10]) {
+  void bluetoothMenu(const char mainName[10], const char status[10]) {
     display.clearDisplay();
     display.setCursor(0, 10);
     display.setTextSize(2);
     display.println(mainName);
+    display.setCursor(0, 40);
+    display.println(status);
     display.display(); 
     Serial.println(mainName);
   }
@@ -349,10 +338,11 @@ class MenuClass {
 MenuClass Menus;
 
 //Asings what buttons do. They are also related to tasks() and menuControl() functionality
+
 void remoteControl() {
 
-  int buttonAState = digitalRead(BUTTON_A_PIN);
-  int buttonBState = digitalRead(BUTTON_B_PIN);
+  uint8_t buttonAState = digitalRead(BUTTON_A_PIN);
+  uint8_t buttonBState = digitalRead(BUTTON_B_PIN);
 
   if (buttonAState == HIGH) {
     irReceivedData = VOLUME_UP;
@@ -392,20 +382,23 @@ void remoteControl() {
     }
     break;
     case POWER:
-    if (task < ON_OFF_MENU) {
+    irReceivedData = 0;
+    if (task != ON_OFF_MENU) {
       task = ON_OFF_MENU;
+      return;
     }
-    else if (task == ON_OFF_MENU) {
-      task = 1;
-      irReceivedData = 0;
+    if (task == ON_OFF_MENU) {
+      task = TV_MENU;
       restart();
     }
     break;
   }
 }
 
+bool paused = false;
+
 void playerControl() {
-  bool paused = false;
+  int8_t sizeOfUrls = (sizeof(URLS) / sizeof(URLS[0]));
 
   switch(irReceivedData) {
     case NEXT:
@@ -414,7 +407,7 @@ void playerControl() {
     } 
     else if (player.isActive()) {
       player.next();
-      currentStation = (currentStation + 1) % (sizeof(URLS) / sizeof(URLS[0]));
+      currentStation = ((currentStation + 1) % sizeOfUrls);
       Menus.radioMenu();
     } 
     break;
@@ -424,7 +417,7 @@ void playerControl() {
     } 
     else if (player.isActive()) {
       player.previous();
-      currentStation = (currentStation - 1 + (sizeof(URLS) / sizeof(URLS[0]))) % (sizeof(URLS) / sizeof(URLS[0]));
+      currentStation = ((currentStation - 1 + sizeOfUrls) % sizeOfUrls);
       Menus.radioMenu();
     }
     break;
@@ -443,31 +436,30 @@ void playerControl() {
   }
 }
 
+// Only to define menu control as seen on the oled screen.
 void lastMenuSet() {
   lastMenu = menu;
   menu = 0;
 }
 
-// Only to define menu control as seen on the oled screen.
 void menuControl() {
   switch (menu) {
     case TV_MENU:
-    Menus.mainMenuText("TV");
+    Menus.mainMenuText("TV", 30, 12, 5);
     lastMenuSet();
     break;
     case BLUETOOTH_MENU:
-    Menus.bluetoothMenu("Bluetooth");
-    display.setCursor(0, 40);
-    display.println("Connecting");
-    display.display();
-    lastMenuSet();
+    Menus.bluetoothMenu("Bluetooth", "Connecting");
+    break;
+    case BLUETOOTH_CONNECTED:
+    Menus.bluetoothMenu("Bluetooth", "Connected");
     break;
     case FM_MENU:
     Menus.radioMenu();
     lastMenuSet();
     break;
     case AUX_MENU:
-    Menus.mainMenuText("AUX");
+    Menus.mainMenuText("AUX", 10, 12, 5);
     lastMenuSet();
     break;
     case VOLUME_MENU:
@@ -480,29 +472,22 @@ void menuControl() {
       menu = lastMenu;
     }
     break;
-    case BLUETOOTH_CONNECTED:
-    Menus.bluetoothMenu("Bluetooth");
-    display.setCursor(0, 40);
-    display.println("Connected");
-    display.display();
-    lastMenuSet();
-    break;
   }
 }
 
+//Tasks
 void flagTaskSet() {
   flag = task;
   menu = task;
 }
 
 bool connected = false;
-//Tasks related to actual connection to the audio
+void i2sInSetup();
 void tasks() {
-
-
   switch (task) {
     case TV_MENU:
     if (task != flag) { //inside this if is the "setup" code, it runs once
+      i2sInSetup();
       flagTaskSet();
     }
     copierInOut.copy(); // outside the above if is the "loop" code
@@ -546,10 +531,32 @@ void tasks() {
       digitalWrite(AUX_RIGHT_PIN, LOW);
       digitalWrite(ON_OFF_5V_PIN, LOW);
       digitalWrite(ON_OFF_AC_PIN, LOW);
-      Serial.println("OFF");
+      Serial.print("OFF  ");
+      Serial.println(irState);
     }
     break;
   }
+}
+
+void isServoAttached() {
+  Serial.println("isServoAttached");
+  if (myServo.attached() == false) { 
+    myServo.attach(SERVO_PIN, SERVO_MIN, SERVO_MAX);
+    position = postitionRtc;
+  }
+}
+
+void i2sInSetup() {
+  Serial.println("I2S in setup");
+  auto cfgIn = i2sIn.defaultConfig(RX_MODE);
+  cfgIn.copyFrom(info);
+  cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
+  cfgIn.is_master = false;
+  cfgIn.port_no = 0;
+  cfgIn.pin_ws = IN_I2S_WS_PIN;
+  cfgIn.pin_bck = IN_I2S_BCK_PIN;
+  cfgIn.pin_data = IN_I2S_DATA_PIN;
+  i2sIn.begin(cfgIn);
 }
 
 void setup() {
@@ -566,18 +573,16 @@ void setup() {
     Serial.println("calibrating positionRTC setup");
     postitionRtc = SERVO_MIN+500;
   }
-  
+
   //Relays
   Serial.println("Relays setup");
   pinMode(ON_OFF_5V_PIN, OUTPUT);
   digitalWrite(ON_OFF_5V_PIN, HIGH);
-  
   pinMode(ON_OFF_AC_PIN, OUTPUT);
   digitalWrite(ON_OFF_AC_PIN, HIGH);
-  
+  Serial.println("AUX setup");
   pinMode(AUX_LEFT_PIN, OUTPUT);
   digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
-  
   pinMode(AUX_RIGHT_PIN, OUTPUT);
   digitalWrite(AUX_RIGHT_PIN, LOW);
 
@@ -596,18 +601,6 @@ void setup() {
   display.setContrast (0);
   display.setTextColor(SH110X_WHITE);
 
-  //I2S in
-  Serial.println("I2S in setup");
-  auto cfgIn = i2sIn.defaultConfig(RX_MODE);
-  cfgIn.copyFrom(info);
-  cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
-  cfgIn.is_master = false;
-  cfgIn.port_no = 0;
-  cfgIn.pin_ws = IN_I2S_WS_PIN;
-  cfgIn.pin_bck = IN_I2S_BCK_PIN;
-  cfgIn.pin_data = IN_I2S_DATA_PIN;
-  i2sIn.begin(cfgIn);
-
   //I2S out
   Serial.println("I2S out setup"); 
   auto cfgOut = i2sOut.defaultConfig(TX_MODE);
@@ -619,8 +612,6 @@ void setup() {
   cfgOut.pin_bck = OUT_I2S_BCK_PIN;
   cfgOut.pin_data = OUT_I2S_DATA_PIN;
   i2sOut.begin(cfgOut);
-  
-  //Servo is attached in isServoAttached() function when needed
 
   Serial.println("Setup done");
 }
