@@ -6,11 +6,10 @@
 #include "AudioTools/Communication/AudioHttp.h"
 #include "BluetoothA2DPSink.h"
 #include <ESP32Servo.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SH110X.h>
 #define DECODE_NEC
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
+#include "display.h"
 
 /*To do list:
 - add url radio connection timeout
@@ -105,16 +104,6 @@ void i2sInSetup() {
   cfgIn.pin_data = IN_I2S_DATA_PIN;
   i2sIn.begin(cfgIn);
 }
-
-//OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
-enum oledSettings {
-  SCREEN_ADDRESS = 0x3C, ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-  SCREEN_WIDTH = 128,
-  SCREEN_HEIGHT = 64,
-  OLED_RESET = -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-};
-
-Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 enum SystemState {
   TV_STATE,
@@ -243,48 +232,7 @@ void restartSystem() {
 //Checks if servo is attached, if not it attaches it. Don't put servo attach in setup() because it makes it jitter.
 void isServoAttached();
 
-class MenuClass {
-  public:
-  void mainMenuText(const char mainName[10], int16_t x, int16_t y, int8_t size) {
-    display.clearDisplay();
-    display.setCursor(x, y);
-    display.setTextSize(size);
-    display.println(mainName);
-    display.display(); 
-    Serial.println(mainName);
-  }
-  void bluetoothMenu(const char mainName[10], const char status[10]) {
-    display.clearDisplay();
-    display.setCursor(0, 10);
-    display.setTextSize(2);
-    display.println(mainName);
-    display.setCursor(0, 40);
-    display.println(status);
-    display.display(); 
-    Serial.println(mainName);
-  }
-  void volumeMenu() {
-    display.clearDisplay();
-    display.setCursor(12, 20);
-    display.setTextSize(3);
-    display.println(position);
-    display.display();
-    Serial.println(position);
-  }
-  void radioMenu() {
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.setTextSize(2);
-    display.println("Radio");
-    display.setCursor(0, 30);
-    display.println(radioStationNames[currentStation]);
-    display.display();
-    Serial.println("Radio");
-    Serial.println(radioStationNames[currentStation]);
-  }
-};
 
-MenuClass Menus;
 
 /*void playerControl() {
   int8_t sizeOfUrls = (sizeof(urls) / sizeof(urls[0]));
@@ -610,11 +558,7 @@ void setup() {
   pinMode(BUTTON_A_PIN, INPUT_PULLDOWN);
   pinMode(BUTTON_B_PIN, INPUT_PULLDOWN);
 
-  //Oled
-  Serial.println("Oled Setup");
-  display.begin(SCREEN_ADDRESS, true);
-  display.setContrast (0);
-  display.setTextColor(SH110X_WHITE);
+
 
   //I2S out
   Serial.println("I2S out setup"); 
