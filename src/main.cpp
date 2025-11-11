@@ -46,7 +46,7 @@ uint32_t lastDebounceTime = 0;
 
 // Serov
 #define SERVO_PIN 23 //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
-RTC_NOINIT_ATTR int postitionRtc; // servo postition stored in ms
+RTC_NOINIT_ATTR uint16_t postitionRtc; // servo postition stored in ms
 constexpr uint16_t SERVO_MIN = 510;
 constexpr uint16_t SERVO_MAX = 2510;
 uint16_t position = SERVO_MIN; // servo position stored in ms
@@ -80,13 +80,13 @@ BluetoothA2DPSink a2dp_sink(i2sOut);
 StreamCopy copierInOut(i2sOut, i2sIn);
 
 //Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
-const char* URLS[3] = { 
+const char* urls[3] = { 
   "http://live.radio.si/Toti",
   "http://reflector.radionet.si:8000/stream.ogg",
   "http://livestreaming-node-3.srg-ssr.ch/srgssr/srf3/mp3/128"
 };
 
-const char* RADIO_STATION_NAMES[3] = {
+const char* radioStationNames[3] = {
   "Toti Radio",
   "NET FM",
   "Swiss"
@@ -94,10 +94,23 @@ const char* RADIO_STATION_NAMES[3] = {
 uint8_t currentStation = 0;
 
 URLStream urlStream(WIFI, PASSWORD);
-AudioSourceURL urlSource(urlStream, URLS, "audio/mp3");
+AudioSourceURL urlSource(urlStream, urls, "audio/mp3");
 MP3DecoderHelix decoder;
 AudioPlayer player(urlSource, i2sOut, decoder);
 //Debouncer buttonDebouncer(); // for AudioPlayer
+
+void i2sInSetup() {
+  Serial.println("I2S in setup");
+  auto cfgIn = i2sIn.defaultConfig(RX_MODE);
+  cfgIn.copyFrom(info);
+  cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
+  cfgIn.is_master = false;
+  cfgIn.port_no = 0;
+  cfgIn.pin_ws = IN_I2S_WS_PIN;
+  cfgIn.pin_bck = IN_I2S_BCK_PIN;
+  cfgIn.pin_data = IN_I2S_DATA_PIN;
+  i2sIn.begin(cfgIn);
+}
 
 //OLED - i2c pins GPIO22 = SCK and GPIO21 = SDA
 enum oledSettings {
@@ -109,7 +122,9 @@ enum oledSettings {
 
 Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-enum menuAndTask {
+
+
+/* enum menuAndTask {
   NO_OF_MAIN_MENU_ITEMS = 4, //update this number if you add a main menu item
   TV_MENU = 1,
   BLUETOOTH_MENU = 2,
@@ -119,8 +134,19 @@ enum menuAndTask {
   BLUETOOTH_CONNECTED = 51,
   ON_OFF_MENU = 100
 };
+*/
+enum SystemState {
+  TV_STATE,
+  BLUETOOTH_STATE,
+  RADIO_STATE,
+  AUX_STATE,
+  OFF_STATE, //keep it always before the last item
+  STATE_COUNT // keep it always last
+};
 
-enum remoteButtons {
+RTC_NOINIT_ATTR enum SystemState currentSystemState = TV_STATE;
+
+enum Buttons {
   /* Buttons for Sharp and NEC
   Buttons for Sharp remote it uses DECODE_DENON:
   NET 149      |   ON/OFF 233
@@ -152,17 +178,18 @@ enum remoteButtons {
   When pressed [] and O simultanious it is 9
   */
   //General (NEC)
-  MENU = 5,
-  POWER = 20,
-  VOLUME_UP = 24,
-  VOLUME_DOWN = 25,
-  DEBUG = 500,
+  MENU_BUTTON = 5,
+  POWER_BUTTON = 20,
+  VOLUME_UP_BUTTON = 24,
+  VOLUME_DOWN_BUTTON = 25,
+  DEBUG_BUTTON = 500,
   //Player control (NEC)
-  NEXT = 3,
-  PREVIOUS = 2,
-  STOP = 1,
-  PAUSE = 11,
-  PLAY = 8,
+  NEXT_BUTTON = 3,
+  PREVIOUS_BUTTON = 2,
+  STOP_BUTTON = 1,
+  PAUSE_BUTTON = 11,
+  PLAY_BUTTON = 8,
+  NONE_BUTTON = 0,
  /*  //General (keyboard)
   MENU = 53, // 5
   POWER = 48, // 0
@@ -194,18 +221,18 @@ void decodeNewRemote() { //only used when decoding a new remote
   } 
 }
 
-void remoteDebounceOnly(uint16_t &button, const unsigned long DEBOUNCE_DELAY_IR) {
+/*void remoteDebounceOnly(uint16_t &button, const unsigned long DEBOUNCE_DELAY_IR) {
   irReceivedData = 0;
-  if (IrReceiver.decode() && (!irState)) {
+  if (IrReceiver.decode() && (!irStateLoop)) {
     lastDebounceTime = millis();
-    irState = true;
+    irStateLoop = true;
     Serial.println(" PRESSED ");
     irReceivedData = IrReceiver.decodedIRData.command;
     Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
     Serial.println(irReceivedData);
   }
-  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irState)) {
-    irState = false;
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irStateLoop)) {
+    irStateLoop = false;
     IrReceiver.resume();
     Serial.print(" IrReceiver.resume() =  ");
     Serial.println(irReceivedData);
@@ -215,16 +242,16 @@ void remoteDebounceOnly(uint16_t &button, const unsigned long DEBOUNCE_DELAY_IR)
 void remoteDecodeSignal() {
   const unsigned long DEBOUNCE_DELAY_IR = 500;
   irReceivedData = 0;
-  if (IrReceiver.decode() && (!irState)) {
+  if (IrReceiver.decode() && (!irStateLoop)) {
     lastDebounceTime = millis();
-    irState = true;
+    irStateLoop = true;
     Serial.println(" PRESSED ");
     irReceivedData = IrReceiver.decodedIRData.command;
     Serial.print(" irReceivedData = IrReceiver.decodedIRData.command = ");
     Serial.println(irReceivedData);
   }
-  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irState)) {
-    irState = false;
+  if (((millis() - lastDebounceTime) > DEBOUNCE_DELAY_IR) && (irStateLoop)) {
+    irStateLoop = false;
     IrReceiver.resume();
     Serial.print(" IrReceiver.resume() =  ");
     Serial.println(irReceivedData);
@@ -236,19 +263,20 @@ void remoteOnOff() {
     remoteDecodeSignal();
     return;
   }
-  if ((task == ON_OFF_MENU) && (irState))  {
-    irState = false;
+  if ((task == ON_OFF_MENU) && (irStateLoop))  {
+    irStateLoop = false;
     IrReceiver.resume();
   }
   if (!IrReceiver.decode()) {
     return;
   }
-  if (IrReceiver.decodedIRData.command == POWER && !irState) {
+  if (IrReceiver.decodedIRData.command == POWER && !irStateLoop) {
     irReceivedData = POWER;
   } else {
     IrReceiver.resume();
   }
 }
+*/
 
 void detachAll() {
 Serial.println(" Writing servo position to RTC... ");
@@ -278,7 +306,7 @@ Serial.println(" Writing servo position to RTC... ");
   i2sIn.end();
 }
 
-void restart() {
+void restartSystem() {
   Serial.println(" digitalWrite ON_OFF_PIN");
   if (digitalRead(ON_OFF_5V_PIN) == LOW) {
     digitalWrite(ON_OFF_5V_PIN, HIGH);
@@ -328,10 +356,10 @@ class MenuClass {
     display.setTextSize(2);
     display.println("Radio");
     display.setCursor(0, 30);
-    display.println(RADIO_STATION_NAMES[currentStation]);
+    display.println(radioStationNames[currentStation]);
     display.display();
     Serial.println("Radio");
-    Serial.println(RADIO_STATION_NAMES[currentStation]);
+    Serial.println(radioStationNames[currentStation]);
   }
 };
 
@@ -339,7 +367,7 @@ MenuClass Menus;
 
 //Asings what buttons do. They are also related to tasks() and menuControl() functionality
 
-void remoteControl() {
+/*void remoteControl() {
 
   uint8_t buttonAState = digitalRead(BUTTON_A_PIN);
   uint8_t buttonBState = digitalRead(BUTTON_B_PIN);
@@ -374,11 +402,11 @@ void remoteControl() {
     case MENU: 
     if ((task < NO_OF_MAIN_MENU_ITEMS) && (task >= 0)) {
       task++;
-      restart();
+      restartSystem();
     } 
     else {
       task = 1;
-      restart();
+      restartSystem();
     }
     break;
     case POWER:
@@ -389,7 +417,7 @@ void remoteControl() {
     }
     if (task == ON_OFF_MENU) {
       task = TV_MENU;
-      restart();
+      restartSystem();
     }
     break;
   }
@@ -398,7 +426,7 @@ void remoteControl() {
 bool paused = false;
 
 void playerControl() {
-  int8_t sizeOfUrls = (sizeof(URLS) / sizeof(URLS[0]));
+  int8_t sizeOfUrls = (sizeof(urls) / sizeof(urls[0]));
 
   switch(irReceivedData) {
     case NEXT:
@@ -474,15 +502,205 @@ void menuControl() {
     break;
   }
 }
+*/
 
-//Tasks
+enum IrState {
+  IR_RECEIVE_STATE,
+  IR_DEBOUNCE_STATE,
+  IR_RESET_STATE,
+  STATE_IR_COUNT
+};
+
+unsigned long debounceDelay;
+bool initIrDebounce = false;
+IrState currentIrState = IR_RECEIVE_STATE;
+
+Buttons currentButton = NONE_BUTTON;
+
+void changeIrState();
+void debounceIr(unsigned long debounceDelay = 500) {
+  if (!initIrDebounce) {
+    initIrDebounce = true;
+    lastDebounceTime = millis();
+    Serial.println(" Debounce start ");
+  }
+  if (((millis() - lastDebounceTime) > (debounceDelay)) && (initIrDebounce)) {
+    initIrDebounce = false;
+    Serial.println("Debounce ends");
+    changeIrState(); //changes state!!!
+  }
+}
+
+bool validButton(Buttons button) {
+  switch(button) {
+    case MENU_BUTTON:
+      Serial.println("validButton(MENU_BUTTON)");
+      return true;
+    case POWER_BUTTON:
+      Serial.println("validButton(POWER_BUTTON)");
+      return true;
+    default:
+      Serial.println("validButton(default)");
+      return false;
+  }
+}
+
+void changeIrState() {
+  switch(currentIrState) {
+    case IR_RECEIVE_STATE: {
+      bool valid = validButton(currentButton);
+      if (!valid) {
+        Serial.println("changeIrState = IR_RESET_STATE");
+        currentIrState = IR_RESET_STATE;
+      } else {
+        Serial.println("changeIrState = IR_DEBOUNCE_STATE");
+        currentIrState = IR_DEBOUNCE_STATE;
+      }
+    break;
+    }
+    case IR_DEBOUNCE_STATE:
+      if (!initIrDebounce) {
+        Serial.println("changeIrState = IR_RECEIVE_STATE");
+        currentIrState = IR_RESET_STATE;
+      }
+      break;
+    case IR_RESET_STATE:
+      currentIrState = IR_RECEIVE_STATE;
+      break;
+  }
+}
+
+void buttonInput(Buttons &button);
+
+void irStateLoop(IrState state) {
+  switch (state) {
+    case IR_RECEIVE_STATE:
+      Serial.println("IR_RECEIVE_STATE");
+      IrReceiver.decode();
+      irReceivedData = IrReceiver.decodedIRData.command;
+      currentButton = (static_cast<Buttons>(IrReceiver.decodedIRData.command));
+      buttonInput(currentButton);
+      break;
+    case IR_DEBOUNCE_STATE:
+      Serial.println("IR_DEBOUNCE_STATE");
+      debounceIr(debounceDelay); //self sets to IR_RESET_STATE
+      break;
+    case IR_RESET_STATE:
+      Serial.println("IR_RESET_STATE");
+      irReceivedData = 0;
+      IrReceiver.resume();
+      changeIrState(); //self sets to IR_RECEIVE_STATE
+      break;
+  }
+}
+
+void systemStateSetup(SystemState state) { //has to run only once
+  switch (state) {
+    case TV_STATE:
+    Serial.println("TV_STATE SETUP");
+    i2sInSetup();
+    break;
+    case BLUETOOTH_STATE:
+    Serial.println("BLUETOOTH_STATE SETUP");
+    a2dp_sink.start("MojAudio");
+    break;
+    case RADIO_STATE:
+    Serial.println("RADIO_STATE SETUP");
+    player.begin();
+    break;
+    case AUX_STATE:
+    Serial.println("AUX_STATE SETUP");
+    if (digitalRead(AUX_LEFT_PIN) == LOW || digitalRead(AUX_RIGHT_PIN) == LOW) {
+      digitalWrite(AUX_LEFT_PIN, HIGH);
+      digitalWrite(AUX_RIGHT_PIN, HIGH);
+    }
+    break;
+    case OFF_STATE:
+    Serial.println("OFF_STATE SETUP");
+    detachAll();
+    digitalWrite(AUX_LEFT_PIN, LOW);
+    digitalWrite(AUX_RIGHT_PIN, LOW);
+    digitalWrite(ON_OFF_5V_PIN, LOW);
+    digitalWrite(ON_OFF_AC_PIN, LOW);
+    Serial.print("OFF  ");
+    break;
+  }
+}
+
+void systemStateLoop(SystemState state) {
+  switch (state) {
+    case TV_STATE:
+    Serial.println("TV_STATE LOOP");
+    copierInOut.copy();
+    break;
+    case RADIO_STATE:
+    Serial.println("RADIO_STATE LOOP");
+    player.copy();
+    break;
+    default:
+    break;
+  }
+}
+
+void setSystemState (SystemState newState) {
+  if (newState != currentSystemState) {
+    currentSystemState = newState;
+    Serial.println("setSystemState has changed");
+    restartSystem();
+  } else {
+    Serial.println("setSystemState runs systemStateSetup");
+    systemStateSetup(currentSystemState);
+  }
+}
+
+void changeSystemState() { //rotates through system states
+  if (currentSystemState != AUX_STATE) {
+    Serial.println("changeSystemState != AUX_STATE");
+    setSystemState(static_cast<SystemState>((currentSystemState + 1) % STATE_COUNT));
+  } else {
+    Serial.println("changeSystemState == AUX_STATE");
+    setSystemState(static_cast<SystemState>((currentSystemState + 2) % STATE_COUNT));
+  }
+}
+
+void changeToOnOffSystemState() {
+  if (currentSystemState != OFF_STATE){
+    Serial.println("changeToOnOffSystemState() != OFF_STATE");
+    setSystemState(OFF_STATE);
+  } else {
+    Serial.println("changeToOnOffSystemState() == OFF_STATE");
+    setSystemState(static_cast<SystemState>(STATE_COUNT % STATE_COUNT)); //with other words set to 0
+  }
+}
+
+void buttonInput(Buttons &button) {
+  switch(button) { //button press should be run only once!
+    case MENU_BUTTON:
+      Serial.println("button = MENUT_BUTTON");
+      debounceDelay = 1000; //if don't set this then the default value is 500 ms
+      changeIrState();
+      changeSystemState();
+      break;
+    case POWER_BUTTON:
+      Serial.println("button = POWER_BUTTON");
+      changeIrState();
+      changeToOnOffSystemState();
+      break;
+    default:
+      Serial.println("button = non-valid button");
+      changeIrState();
+      break;
+  }
+  Serial.println("button = NONE_BUTTON");
+  button = NONE_BUTTON;
+}
+
+/*//Tasks
 void flagTaskSet() {
   flag = task;
   menu = task;
 }
-
 bool connected = false;
-void i2sInSetup();
 void tasks() {
   switch (task) {
     case TV_MENU:
@@ -537,6 +755,7 @@ void tasks() {
     break;
   }
 }
+*/
 
 void isServoAttached() {
   Serial.println("isServoAttached");
@@ -546,29 +765,22 @@ void isServoAttached() {
   }
 }
 
-void i2sInSetup() {
-  Serial.println("I2S in setup");
-  auto cfgIn = i2sIn.defaultConfig(RX_MODE);
-  cfgIn.copyFrom(info);
-  cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
-  cfgIn.is_master = false;
-  cfgIn.port_no = 0;
-  cfgIn.pin_ws = IN_I2S_WS_PIN;
-  cfgIn.pin_bck = IN_I2S_BCK_PIN;
-  cfgIn.pin_data = IN_I2S_DATA_PIN;
-  i2sIn.begin(cfgIn);
-}
-
 void setup() {
   //Debugging
   Serial.begin(115200);
   Serial.println("Setup started");
   
-  //RTC variable
+  //System state setup  
   if (resetReason != ESP_RST_SW) {
     Serial.println("RTC variabke setup");
-    task = 1;
+    setSystemState(static_cast<SystemState>(STATE_COUNT % STATE_COUNT)); //with other words set to 0
+    Serial.println("setup() setSystemState(0)");
+  } else {
+    setSystemState(currentSystemState);
+    Serial.println("setup() setSystemState(currentSystemState)");
   }
+    
+//RTC variable
   if ((postitionRtc < SERVO_MIN-100) || (postitionRtc > SERVO_MAX+100)) {
     Serial.println("calibrating positionRTC setup");
     postitionRtc = SERVO_MIN+500;
@@ -628,10 +840,12 @@ void debug() {
 
 void loop() {
   //decodeNewRemote(); //uncomment this and comment out remoteOnOff() decode a new remote
-  remoteOnOff(); // comment it out for keyboard control
-  remoteControl();
-  playerControl();
-  menuControl();
-  tasks();
-  debug();
+  //remoteOnOff(); // comment it out for keyboard control
+  //remoteControl();
+  //playerControl();
+  //menuControl();
+  irStateLoop(currentIrState);
+  systemStateLoop(currentSystemState);
+  //tasks();
+  //debug();
 }
