@@ -501,9 +501,15 @@ void systemStateLoop(SystemState state) {
 }
 
 void setSystemState (SystemState newState) {
+  if (newState == OFF_STATE) {
+    Serial.println("setSystemState == OFF_STATE");
+    currentSystemState = OFF_STATE;
+    systemStateSetup(currentSystemState);
+    return;
+  }  
   if (newState != currentSystemState) {
-    currentSystemState = newState;
     Serial.println("setSystemState has changed");
+    currentSystemState = newState;
     restartSystem();
   } else {
     Serial.println("setSystemState runs systemStateSetup");
@@ -521,12 +527,12 @@ void changeSystemState() { //rotates through system states
   }
 }
 
-void changeToOnOffSystemState() {
+void changeOnOffSystemState() {
   if (currentSystemState != OFF_STATE){
-    Serial.println("changeToOnOffSystemState() != OFF_STATE");
+    Serial.println("changeOnOffSystemState() != OFF_STATE");
     setSystemState(OFF_STATE);
   } else {
-    Serial.println("changeToOnOffSystemState() == OFF_STATE");
+    Serial.println("changeOnOffSystemState() == OFF_STATE");
     setSystemState(static_cast<SystemState>(STATE_COUNT % STATE_COUNT)); //with other words set to 0
   }
 }
@@ -542,7 +548,7 @@ void buttonInput(Buttons &button) {
     case POWER_BUTTON:
       Serial.println("button = POWER_BUTTON");
       changeIrState();
-      changeToOnOffSystemState();
+      changeOnOffSystemState();
       break;
     default:
       Serial.println("button = non-valid button");
