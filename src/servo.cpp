@@ -1,11 +1,11 @@
 #include "servo.h"
 #include <ESP32Servo.h>
 
-RTC_NOINIT_ATTR uint16_t postitionRtc = 0; // servo postition stored in ms
+RTC_NOINIT_ATTR uint16_t postitionRtc; // servo postition stored in ms
 uint16_t position = SERVO_MIN; // servo position stored in ms
 uint16_t step = 10; // Servo's one step movement in ms
 
-Servo MyServo;
+static Servo MyServo;
 
 void isServoAttached() {
   Serial.println("isServoAttached");

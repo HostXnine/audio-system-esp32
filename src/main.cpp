@@ -260,8 +260,8 @@ void changeIrState() {
             Serial.println("changeIrState = IR_DEBOUNCE_STATE");
             currentIrState = IR_DEBOUNCE_STATE;
         } else { 
-        Serial.println("changeIrState = IR_RESET_STATE");
-        currentIrState = IR_RESET_STATE;
+            Serial.println("changeIrState = IR_RESET_STATE");
+            currentIrState = IR_RESET_STATE;
         }
         break;
         }
@@ -283,52 +283,52 @@ void buttonInput(Buttons &button);
 void irStateLoop(IrState state) {
     switch (state) {
         case IR_RECEIVE_STATE:
-        Serial.println("IR_RECEIVE_STATE");
-        if (IrReceiver.decode()) {
-            currentButton = (static_cast<Buttons>(IrReceiver.decodedIRData.command));
-            buttonInput(currentButton);
-        }
-        break;
+            Serial.println("IR_RECEIVE_STATE");
+            if (IrReceiver.decode()) {
+                currentButton = (static_cast<Buttons>(IrReceiver.decodedIRData.command));
+                buttonInput(currentButton);
+            }
+            break;
         case IR_DEBOUNCE_STATE:
-        Serial.println("IR_DEBOUNCE_STATE");
-        debounceIr(debounceDelay); //self sets to IR_RESET_STATE
-        break;
+            Serial.println("IR_DEBOUNCE_STATE");
+            debounceIr(debounceDelay); //self sets to IR_RESET_STATE
+            break;
         case IR_RESET_STATE:
-        Serial.println("IR_RESET_STATE");
-        IrReceiver.resume();
-        changeIrState(); //self sets to IR_RECEIVE_STATE
-        break;
+            Serial.println("IR_RESET_STATE");
+            IrReceiver.resume();
+            changeIrState(); //self sets to IR_RECEIVE_STATE
+            break;
   }
 }
 
 void systemStateSetup(SystemState state) { //has to run only once
     switch (state) {
         case TV_STATE:
-        Serial.println("TV_STATE SETUP");
-        break;
+            Serial.println("TV_STATE SETUP");
+            break;
         case BLUETOOTH_STATE:
-        Serial.println("BLUETOOTH_STATE SETUP");
-        a2dpSinkStart();
-        break;
+            Serial.println("BLUETOOTH_STATE SETUP");
+            a2dpSinkStart();
+            break;
         case RADIO_STATE:
-        Serial.println("RADIO_STATE SETUP");
-        void playerBegin();
-        break;
+            Serial.println("RADIO_STATE SETUP");
+            playerBegin();
+            break;
         case AUX_STATE:
-        Serial.println("AUX_STATE SETUP");
-        if (digitalRead(AUX_LEFT_PIN) == LOW || digitalRead(AUX_RIGHT_PIN) == LOW) {
-        digitalWrite(AUX_LEFT_PIN, HIGH);
-        digitalWrite(AUX_RIGHT_PIN, HIGH);
-        }
-        break;
+            Serial.println("AUX_STATE SETUP");
+            if (digitalRead(AUX_LEFT_PIN) == LOW || digitalRead(AUX_RIGHT_PIN) == LOW) {
+            digitalWrite(AUX_LEFT_PIN, HIGH);
+            digitalWrite(AUX_RIGHT_PIN, HIGH);
+            }
+            break;
         case OFF_STATE:
-        Serial.println("OFF_STATE SETUP");
-        detachAll();
-        digitalWrite(AUX_LEFT_PIN, LOW);
-        digitalWrite(AUX_RIGHT_PIN, LOW);
-        digitalWrite(ON_OFF_5V_PIN, LOW);
-        digitalWrite(ON_OFF_AC_PIN, LOW);
-        Serial.println("OFF  ");
+            Serial.println("OFF_STATE SETUP");
+            detachAll();
+            digitalWrite(AUX_LEFT_PIN, LOW);
+            digitalWrite(AUX_RIGHT_PIN, LOW);
+            digitalWrite(ON_OFF_5V_PIN, LOW);
+            digitalWrite(ON_OFF_AC_PIN, LOW);
+            Serial.println("OFF  ");
         break;
     }
 }
@@ -336,15 +336,15 @@ void systemStateSetup(SystemState state) { //has to run only once
 void systemStateLoop(SystemState state) {
     switch (state) {
         case TV_STATE:
-        Serial.println("TV_STATE LOOP");
-        copierInOutCopy();
-        break;
+            Serial.println("TV_STATE LOOP");
+            copierInOutCopy();
+            break;
         case RADIO_STATE:
-        Serial.println("RADIO_STATE LOOP");
-        playerCopy();
-        break;
+            Serial.println("RADIO_STATE LOOP");
+            playerCopy();
+            break;
         default:
-        break;
+            break;
     }
 }
 
@@ -388,20 +388,20 @@ void changeOnOffSystemState() {
 void buttonInput(Buttons &button) {
     switch(button) { //button press should be run only once!
         case MENU_BUTTON:
-        Serial.println("button = MENUT_BUTTON");
-        debounceDelay = 1000; //if don't set this then the default value is 500 ms
-        changeIrState();
-        changeSystemState();
-        break;
+            Serial.println("button = MENUT_BUTTON");
+            debounceDelay = 1000; //if don't set this then the default value is 500 ms
+            changeIrState();
+            changeSystemState();
+            break;
         case POWER_BUTTON:
-        Serial.println("button = POWER_BUTTON");
-        changeIrState();
-        changeOnOffSystemState();
-        break;
+            Serial.println("button = POWER_BUTTON");
+            changeIrState();
+            changeOnOffSystemState();
+            break;
         default:
-        Serial.println("button = non-valid button");
-        changeIrState();
-        break;
+            Serial.println("button = non-valid button");
+            changeIrState();
+            break;
     }
     Serial.println("button = NONE_BUTTON");
     button = NONE_BUTTON;
@@ -422,7 +422,10 @@ void setup() {
         Serial.println("setup() setSystemState(currentSystemState)");
     }
     
-    oledSetup();
+    servoSetup();
+    
+    relayPowerSetup();
+    relayAuxSetup();
 
     //IR
     Serial.println("IR setup");
@@ -432,14 +435,16 @@ void setup() {
     Serial.println("Buttons setup");
     pinMode(BUTTON_A_PIN, INPUT_PULLDOWN);
     pinMode(BUTTON_B_PIN, INPUT_PULLDOWN);
-
+    
+    displaySetup();
+    
     i2sOutSetup();
     i2sInSetup();
 
     Serial.println("Setup done");
-    }
+}
 
-    void debug() {
+void debug() {
     //irReceivedData = Serial.read(); // uncomment for keyboard control
     if (currentButton > 0) {
         Serial.print("|Keypress: ");

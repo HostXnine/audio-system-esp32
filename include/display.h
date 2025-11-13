@@ -13,7 +13,5 @@ public:
     void volumeMenu();
     void radioMenu();
 };
-extern MenuClass Menus;
 
-void oledSetup();
-
+void displaySetup();
