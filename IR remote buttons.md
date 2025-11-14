@@ -1,4 +1,5 @@
- Buttons for Sharp and NEC
+/*
+Buttons for Sharp and NEC
 Buttons for Sharp remote it uses DECODE_DENON:
 NET 149      |   ON/OFF 233
     1 254 | 2 253 |   3 252
@@ -29,15 +30,16 @@ v 25 | 0  4 | ^ 24
 ||11 | [] 1 | ||> 16 | O  inactive
 When pressed [] and O simultanious it is 9
 
-    /*  //General (keyboard)
-    MENU = 53, // 5
-    POWER = 48, // 0
-    VOLUME_UP = 43, // -
-    VOLUME_DOWN = 45, // +
-    DEBUG = 42, // *
-    //Player control (keyboard)
-    NEXT = 54, // 6
-    PREVIOUS = 52, // 4
-    STOP = 49, // 1
-    PAUSE = 51, // 3
-    PLAY = 36 // home */
+//General (keyboard)
+MENU = 53, // 5
+POWER = 48, // 0
+VOLUME_UP = 43, // -
+VOLUME_DOWN = 45, // +
+DEBUG = 42, // *
+//Player control (keyboard)
+NEXT = 54, // 6
+PREVIOUS = 52, // 4
+STOP = 49, // 1
+PAUSE = 51, // 3
+PLAY = 36 // home 
+*/
