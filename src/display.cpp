@@ -1,10 +1,24 @@
 #include "display.h"
 #include "servo.h"
 #include "audio.h"
+#include <Arduino.h>
 #include <Adafruit_SH110X.h>
 #include <Adafruit_GFX.h> //core libary which is needed by the display specific library
 
+constexpr uint8_t SCREEN_ADDRESS = 0x3C;
+constexpr uint16_t SCREEN_WIDTH = 128;
+constexpr uint16_t SCREEN_HEIGHT = 64;
+constexpr int16_t OLED_RESET = -1;
+
 static Adafruit_SH1106G Display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+class MenuClass {
+public:
+    void mainMenuText(const char mainName[10], int16_t x, int16_t y, int8_t size);
+    void bluetoothMenu(const char mainName[10], const char status[10]);
+    void volumeMenu();
+    void radioMenu();
+};
 static MenuClass Menus;
 
 void displaySetup() {
@@ -49,6 +63,13 @@ void MenuClass::radioMenu() {
     Display.display();
     Serial.println("Radio");
     Serial.println(radioStationNames[currentStation]);
+}
+
+void displayClear() {
+    Serial.println(" cleardisplay()");
+    Display.clearDisplay();
+    Serial.println(" display()");
+    Display.display();
 }
 
 /*void menuControl() {
