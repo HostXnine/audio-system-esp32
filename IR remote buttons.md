@@ -1,4 +1,3 @@
-/*
 Buttons for Sharp and NEC
 Buttons for Sharp remote it uses DECODE_DENON:
 NET 149      |   ON/OFF 233
@@ -42,4 +41,3 @@ PREVIOUS = 52, // 4
 STOP = 49, // 1
 PAUSE = 51, // 3
 PLAY = 36 // home 
-*/

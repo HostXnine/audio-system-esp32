@@ -1,5 +1,5 @@
 #include "audio.h"
-#include "WifiConfig.h"
+#include "wifi_config.h"
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
 #include "AudioTools/Disk/AudioSourceURL.h"
