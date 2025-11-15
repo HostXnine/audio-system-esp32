@@ -2,8 +2,7 @@
 #include "servo.h"
 #include "audio.h"
 #include "relay.h"
-#include "display.h"
-#include <Arduino.h>
+#include "menu.h"
 
 esp_reset_reason_t resetReason = esp_reset_reason();
 uint32_t myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
@@ -15,7 +14,7 @@ void detachAll() {
     postitionRtc = position;
     Serial.println(" Detaching...");
     servoDetach();
-    displayClear();
+    menuState(MenuState::OFF);
     detachAudio();
 }
 

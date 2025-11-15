@@ -5,12 +5,12 @@
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
 
-enum Buttons {
+enum Buttons : uint8_t {
     MENU_BUTTON = 5,
     POWER_BUTTON = 20,
     VOLUME_UP_BUTTON = 24,
     VOLUME_DOWN_BUTTON = 25,
-    DEBUG_BUTTON = 500,
+    DEBUG_BUTTON = 240,
     NEXT_BUTTON = 3,
     PREVIOUS_BUTTON = 2,
     STOP_BUTTON = 1,

@@ -6,6 +6,8 @@
 #include "physical_buttons.h"
 #include "ir_control.h"
 #include "system.h"
+#include "menu.h"
+
 
 void setup() {    
     Serial.begin(115200);
@@ -24,5 +26,6 @@ void setup() {
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
+    menuStateLoop();
     systemStateLoop(currentSystemState);
 }
