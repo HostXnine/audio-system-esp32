@@ -3,19 +3,16 @@
 #include "audio.h"
 #include "relay.h"
 #include "menu.h"
-#include <Arduino.h>
 
 esp_reset_reason_t resetReason = esp_reset_reason();
-uint32_t myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
 
-RTC_NOINIT_ATTR SystemState currentSystemState = TV_STATE;
+RTC_NOINIT_ATTR SystemState currentSystemState = SystemState::TV_STATE;
 
 void detachAll() {
     Serial.println(" Writing servo position to RTC... ");
     postitionRtc = position;
     Serial.println(" Detaching...");
     servoDetach();
-
     detachAudio();
 }
 
@@ -28,22 +25,22 @@ void restartSystem() {
 
 void systemStateSetup(SystemState state) { //has to run only once
     switch (state) {
-        case TV_STATE:
+        case SystemState::TV_STATE:
             Serial.println("TV_STATE SETUP");
             break;
-        case BLUETOOTH_STATE:
+        case SystemState::BLUETOOTH_STATE:
             Serial.println("BLUETOOTH_STATE SETUP");
             a2dpStart();
             break;
-        case RADIO_STATE:
+        case SystemState::RADIO_STATE:
             Serial.println("RADIO_STATE SETUP");
             playerBegin();
             break;
-        case AUX_STATE:
+        case SystemState::AUX_STATE:
             Serial.println("AUX_STATE SETUP");
             relayAuxState();
             break;
-        case OFF_STATE:
+        case SystemState::OFF_STATE:
             Serial.println("OFF_STATE SETUP");
             detachAll();
             relayOffState();
@@ -56,12 +53,12 @@ void systemStateSetup(SystemState state) { //has to run only once
 
 void systemStateLoop(SystemState state) {
     switch (state) {
-        case TV_STATE:
-            Serial.println("TV_STATE LOOP");
+        case SystemState::TV_STATE:
+            //Serial.println("TV_STATE LOOP");
             copierInOutCopy();
             break;
-        case RADIO_STATE:
-            Serial.println("RADIO_STATE LOOP");
+        case SystemState::RADIO_STATE:
+            //Serial.println("RADIO_STATE LOOP");
             playerCopy();
             break;
         default:
@@ -70,9 +67,9 @@ void systemStateLoop(SystemState state) {
 }
 
 void setSystemState (SystemState newState) {
-    if (newState == OFF_STATE) {
+    if (newState == SystemState::OFF_STATE) {
         Serial.println("setSystemState == OFF_STATE");
-        currentSystemState = OFF_STATE;
+        currentSystemState = SystemState::OFF_STATE;
         systemStateSetup(currentSystemState);
         return;
     }  
@@ -86,20 +83,26 @@ void setSystemState (SystemState newState) {
     }
 }
 
+inline SystemState nextSystemState(SystemState state, uint8_t step) {
+    return static_cast<SystemState>(
+        (static_cast<uint8_t>(state) + step) % static_cast<uint8_t>(SystemState::STATE_COUNT)
+    );
+}
+
 void changeSystemState() { //rotates through system states
-    if (currentSystemState != AUX_STATE) {
+    if (currentSystemState != SystemState::AUX_STATE) {
         Serial.println("changeSystemState != AUX_STATE");
-        setSystemState(static_cast<SystemState>((currentSystemState + 1) % STATE_COUNT));
+        setSystemState(nextSystemState(currentSystemState, 1));
     } else {
         Serial.println("changeSystemState == AUX_STATE");
-        setSystemState(static_cast<SystemState>((currentSystemState + 2) % STATE_COUNT));
+        setSystemState(nextSystemState(currentSystemState, 2));
     }
 }
 
 void changeOnOffSystemState() {
-    if (currentSystemState != OFF_STATE){
+    if (currentSystemState != SystemState::OFF_STATE){
         Serial.println("changeOnOffSystemState() != OFF_STATE");
-        setSystemState(OFF_STATE);
+        setSystemState(SystemState::OFF_STATE);
     } else {
         Serial.println("changeOnOffSystemState() == OFF_STATE");
         setSystemState(static_cast<SystemState>(0)); //sets to first element in enum

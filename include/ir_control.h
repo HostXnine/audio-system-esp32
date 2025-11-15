@@ -1,6 +1,6 @@
 #pragma once
 
-enum IrState {
+enum class IrState {
     IR_RECEIVE_STATE,
     IR_DEBOUNCE_STATE,
     IR_RESET_STATE,
@@ -9,7 +9,10 @@ enum IrState {
 
 extern IrState currentIrState;
 
+extern unsigned long debounceDelay;
+
 void irSetup();
 void decodeNewRemote();
 void irStateLoop(enum IrState);
+void changeIrState();
 

@@ -10,6 +10,8 @@ void i2sOutSetup();
 void detachAudio();
 
 void a2dpStart();
+bool a2dpIsConnected();
+
 void playerBegin();
 void copierInOutCopy();
 void playerCopy();

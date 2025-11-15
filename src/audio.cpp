@@ -106,6 +106,13 @@ void detachAudio() {
 void a2dpStart() {
     a2dp_sink.start("MojAudio");
 }
+bool a2dpIsConnected() {
+  if (a2dp_sink.is_connected()) {
+    return true;
+  } else {
+    return false;
+  }
+}
 void playerBegin() {
     player.begin();
 }

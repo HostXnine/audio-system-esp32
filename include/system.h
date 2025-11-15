@@ -1,6 +1,7 @@
 #pragma once
+#include <Arduino.h>
 
-enum SystemState {
+enum class SystemState : uint8_t {
     TV_STATE,
     BLUETOOTH_STATE,
     RADIO_STATE,

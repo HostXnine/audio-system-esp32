@@ -1,11 +1,9 @@
 #include "menu.h"
 #include "display.h"
-#include "servo.h"
 #include "audio.h"
 #include "system.h"
 #include <Adafruit_SH110X.h>
 #include <Adafruit_GFX.h>
-#include <BluetoothA2DPSink.h>
 #include <Arduino.h>
 
 enum class MenuState : uint8_t {
@@ -90,19 +88,19 @@ void menuState(MenuState currentMenuState) {
 
 void changeMenuState(SystemState systemState) {
     switch (systemState) {
-        case TV_STATE:
+        case SystemState::TV_STATE:
             menuState(MenuState::TV);
             break;
-        case BLUETOOTH_STATE:
+        case SystemState::BLUETOOTH_STATE:
             menuState(MenuState::BLUETOOTH_CONNECTING);
             break;
-        case RADIO_STATE:
+        case SystemState::RADIO_STATE:
             menuState(MenuState::RADIO);
             break;
-        case AUX_STATE:
+        case SystemState::AUX_STATE:
             menuState(MenuState::AUX);
             break;
-        case OFF_STATE:
+        case SystemState::OFF_STATE:
             menuState(MenuState::OFF);
             break;
         default:
@@ -110,21 +108,34 @@ void changeMenuState(SystemState systemState) {
     }
 }
 
-void menuStateLoop() {
-    static SystemState newSystemState = STATE_COUNT;
-    if (newSystemState != currentSystemState) {
-        changeMenuState(currentSystemState);
-        newSystemState = currentSystemState;
+void menuUpdateRadioName() {
+    if (currentSystemState == SystemState::RADIO_STATE) {
+        menuState(MenuState::RADIO);
     }
-    if (currentSystemState == BLUETOOTH_STATE) {
-        static bool connected = false;
-        if (!a2dp_sink.is_connected() && !connected){
+}
+
+void menuBluetoothConnect() {
+    static bool connected = false;
+
+    if (currentSystemState == SystemState::BLUETOOTH_STATE) {
+        if (!a2dpIsConnected() && !connected){
             menuState(MenuState::BLUETOOTH_CONNECTING);
             connected = true;
         }
-        if (a2dp_sink.is_connected() && (connected)) {
+        if (a2dpIsConnected() && (connected)) {
             menuState(MenuState::BLUETOOTH_CONNECTED);
             connected = false;
         }
     }
 }
+
+void menuStateLoop() {
+    static SystemState newSystemState = SystemState::STATE_COUNT;
+    
+    if (newSystemState != currentSystemState) {
+        changeMenuState(currentSystemState);
+        newSystemState = currentSystemState;
+    }
+    menuBluetoothConnect();
+}
+
