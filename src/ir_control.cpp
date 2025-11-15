@@ -1,5 +1,6 @@
 #include "ir_control.h"
 #include "system.h"
+#include "audio.h"
 #include <Arduino.h>
 #define DECODE_NEC
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
@@ -129,14 +130,24 @@ void buttonInput(Buttons &button) {
     switch(button) { //button press should be run only once!
         case MENU_BUTTON:
             Serial.println("button = MENUT_BUTTON");
-            debounceDelay = 1000; //if don't set this then the default value is 500 ms
+            //debounceDelay = 1000; //if don't set this then the default value is 500 ms
             changeIrState();
             changeSystemState();
             break;
         case POWER_BUTTON:
             Serial.println("button = POWER_BUTTON");
+            debounceDelay = 1000;
             changeIrState();
             changeOnOffSystemState();
+            break;
+        case NEXT_BUTTON:
+            audioNext();
+            break;
+        case PREVIOUS_BUTTON:
+            audioPrevious();
+            break;
+        case PLAY_BUTTON:
+            audioPlayPause();
             break;
         default:
             Serial.println("button = non-valid button");
@@ -146,44 +157,3 @@ void buttonInput(Buttons &button) {
     Serial.println("button = NONE_BUTTON");
     button = NONE_BUTTON;
 }
-
-/*void playerControl() {
-  int8_t sizeOfUrls = (sizeof(urls) / sizeof(urls[0]));
-
-  switch(irReceivedData) {
-    case NEXT:
-    if (a2dp_sink.is_connected()) {
-      a2dp_sink.next();
-    } 
-    else if (player.isActive()) {
-      player.next();
-      currentStation = ((currentStation + 1) % sizeOfUrls);
-      Menus.radioMenu();
-    } 
-    break;
-    case PREVIOUS:
-    if (a2dp_sink.is_connected()) {
-      a2dp_sink.previous();
-    } 
-    else if (player.isActive()) {
-      player.previous();
-      currentStation = ((currentStation - 1 + sizeOfUrls) % sizeOfUrls);
-      Menus.radioMenu();
-    }
-    break;
-    case PLAY:
-    if (a2dp_sink.is_connected()) {
-      if (!paused) {
-        a2dp_sink.pause();
-        paused = true;
-      }
-      if (paused) {
-        a2dp_sink.play();
-        paused = false;
-      }
-    } 
-    break;
-  }
-}
-*/
-

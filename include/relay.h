@@ -2,6 +2,6 @@
 
 void relayPowerSetup();
 void relayAuxSetup();
-void relayPowerRestart();
+void relayRestart();
 void relayAuxState();
 void relayOffState();

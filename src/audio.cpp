@@ -5,6 +5,8 @@
 #include "AudioTools/Disk/AudioSourceURL.h"
 #include "AudioTools/Communication/AudioHttp.h"
 #include "BluetoothA2DPSink.h"
+#include <Arduino.h>
+
 
 //Audio OUT (external DAC)
 constexpr uint8_t OUT_I2S_BCK_PIN = 17; //aka SCK. Connect to (BCK)
@@ -17,8 +19,6 @@ constexpr uint8_t IN_I2S_WS_PIN = 34; //aka LRCLK. Connect to (LRCK)
 constexpr uint8_t IN_I2S_DATA_PIN = 35; // data out. Connect to (DATA)
 constexpr uint8_t IN_I2S_BCK_PIN = 32; //aka SCK. Connect to (BCKL)
 //constexpr uint8_t IN_I2S_MCK_PIN = 3;  //must be 0,1 or 3. NEVER USE 1 it's the TX pin. 3 is the RX pin and 0 is not exposed. The external DAC works without MCK connection.
-
-uint8_t currentStation = 0;
 
 //Stream and quality
 static AudioInfo info(48000, 2, 32); //48000 32 bit sample works the best with spdif to i2s converters even though the converter outputs 24 bit audio
@@ -43,6 +43,10 @@ const char* radioStationNames[3] = {
     "NET FM",
     "Swiss"
 };
+
+static uint8_t currentStation = 0;
+static int8_t sizeOfUrls = (sizeof(urls) / sizeof(urls[0]));
+const char* currentRadioStationName = radioStationNames[currentStation];
 
 //Internet Radio, don't use https becaus it will run out of memory. If https is the only option you can do it
 static URLStream urlStream(WIFI, PASSWORD);
@@ -99,18 +103,48 @@ void detachAudio() {
     i2sIn.end();
 }
 
-void a2dpSinkStart() {
+void a2dpStart() {
     a2dp_sink.start("MojAudio");
 }
-
 void playerBegin() {
     player.begin();
 }
-
 void copierInOutCopy() {
     copierInOut.copy();
 }
-
 void playerCopy() {
     player.copy();
+}
+void audioNext() {
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.next();
+    } 
+    else if (player.isActive()) {
+      player.next();
+      currentStation = ((currentStation + 1) % sizeOfUrls);
+      currentRadioStationName = radioStationNames[currentStation];
+    } 
+}
+void audioPrevious() {
+    if (a2dp_sink.is_connected()) {
+      a2dp_sink.previous();
+    } 
+    else if (player.isActive()) {
+      player.previous();
+      currentStation = ((currentStation - 1 + sizeOfUrls) % sizeOfUrls);
+      currentRadioStationName = radioStationNames[currentStation];
+    }
+}
+void audioPlayPause() {
+    static bool paused = false;
+    if (a2dp_sink.is_connected()) {
+      if (!paused) {
+        a2dp_sink.pause();
+        paused = true;
+      }
+      if (paused) {
+        a2dp_sink.play();
+        paused = false;
+      }
+    } 
 }

@@ -21,13 +21,17 @@ void relayAuxSetup() {
     digitalWrite(AUX_RIGHT_PIN, LOW);
 }
 
-void relayPowerRestart() {
+void relayRestart() {
     Serial.println(" digitalWrite ON_OFF_PIN");
     if (digitalRead(ON_OFF_5V_PIN) == LOW) {
         digitalWrite(ON_OFF_5V_PIN, HIGH);
     }
     if (digitalRead(ON_OFF_AC_PIN) == LOW) {
         digitalWrite(ON_OFF_AC_PIN, HIGH);
+    }
+    if (digitalRead(AUX_LEFT_PIN) == HIGH || digitalRead(AUX_RIGHT_PIN) == HIGH) {
+        digitalWrite(AUX_LEFT_PIN, LOW);
+        digitalWrite(AUX_RIGHT_PIN, LOW);
     }
 }
 

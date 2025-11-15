@@ -3,6 +3,7 @@
 #include "audio.h"
 #include "relay.h"
 #include "menu.h"
+#include <Arduino.h>
 
 esp_reset_reason_t resetReason = esp_reset_reason();
 uint32_t myLastTime; //for implementing delays. For some reason it has to be a global variable otherwise it doesn't work.
@@ -14,12 +15,12 @@ void detachAll() {
     postitionRtc = position;
     Serial.println(" Detaching...");
     servoDetach();
-    menuState(MenuState::OFF);
+
     detachAudio();
 }
 
 void restartSystem() {
-    relayPowerRestart();
+    relayRestart();
     detachAll();
     Serial.println(" Restarting now...");
     esp_restart();
@@ -32,7 +33,7 @@ void systemStateSetup(SystemState state) { //has to run only once
             break;
         case BLUETOOTH_STATE:
             Serial.println("BLUETOOTH_STATE SETUP");
-            a2dpSinkStart();
+            a2dpStart();
             break;
         case RADIO_STATE:
             Serial.println("RADIO_STATE SETUP");
@@ -47,7 +48,9 @@ void systemStateSetup(SystemState state) { //has to run only once
             detachAll();
             relayOffState();
             Serial.println("OFF  ");        
-        break;
+            break;
+        default:
+            break;
     }
 }
 
@@ -99,14 +102,14 @@ void changeOnOffSystemState() {
         setSystemState(OFF_STATE);
     } else {
         Serial.println("changeOnOffSystemState() == OFF_STATE");
-        setSystemState(TV_STATE); //with other words set to 0
+        setSystemState(static_cast<SystemState>(0)); //sets to first element in enum
     }
 }
 
 void systemSetup() { 
     if (resetReason != ESP_RST_SW) {
         Serial.println("RTC variabke setup");
-        setSystemState(TV_STATE); //with other words set to 0
+        setSystemState(static_cast<SystemState>(0)); //sets to first element in enum
         Serial.println("systemSetup() setSystemState(0)");
     } else {
         setSystemState(currentSystemState);
