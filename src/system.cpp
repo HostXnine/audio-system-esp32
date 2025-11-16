@@ -27,6 +27,7 @@ void systemStateSetup(SystemState state) { //has to run only once
     switch (state) {
         case SystemState::TV_STATE:
             Serial.println("TV_STATE SETUP");
+            i2sInSetup();
             break;
         case SystemState::BLUETOOTH_STATE:
             Serial.println("BLUETOOTH_STATE SETUP");

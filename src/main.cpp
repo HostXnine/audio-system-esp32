@@ -18,7 +18,6 @@ void setup() {
     physicalButtonsSetup();   
     displaySetup();
     i2sOutSetup();
-    i2sInSetup();
     Serial.println("Setup done");
 }
 

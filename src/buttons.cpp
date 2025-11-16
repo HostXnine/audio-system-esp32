@@ -9,17 +9,22 @@ Buttons currentButton = Buttons::NONE_BUTTON;
 bool validButton(Buttons button) {
     switch(button) {
         case Buttons::MENU_BUTTON:
-            Serial.println("validButton(MENU_BUTTON)");
-            return true;
-            break;
         case Buttons::POWER_BUTTON:
-            Serial.println("validButton(POWER_BUTTON)");
+        case Buttons::VOLUME_UP_BUTTON:
+        case Buttons::VOLUME_DOWN_BUTTON:
+        case Buttons::DEBUG_BUTTON:
+        case Buttons::NEXT_BUTTON:
+        case Buttons::PREVIOUS_BUTTON:
+        case Buttons::STOP_BUTTON:
+        case Buttons::PAUSE_BUTTON:
+        case Buttons::PLAY_BUTTON:
+            Serial.println("validButton(true)");
             return true;
             break;
         default:
             Serial.println("validButton(default)");
             return false;
-        break;
+            break;
     }
 }
 
