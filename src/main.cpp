@@ -7,12 +7,12 @@
 #include "ir_control.h"
 #include "system.h"
 #include "menu.h"
+#include "servo.h"
 
 void setup() {    
     Serial.begin(115200);
     Serial.println("Setup started");
     systemSetup();
-    servoSetup();
     relayPowerSetup();
     irSetup();
     physicalButtonsSetup();   
@@ -26,4 +26,5 @@ void loop() {
     irStateLoop(currentIrState);
     menuStateLoop();
     systemStateLoop(currentSystemState);
+    servoLoop();
 }

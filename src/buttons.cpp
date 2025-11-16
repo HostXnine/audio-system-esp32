@@ -3,6 +3,7 @@
 #include "system.h"
 #include "audio.h"
 #include "menu.h"
+#include "servo.h"
 
 Buttons currentButton = Buttons::NONE_BUTTON;
 
@@ -53,6 +54,16 @@ void buttonInput(Buttons &button) {
             break;
         case Buttons::PLAY_BUTTON:
             audioPlayPause();
+            changeIrState();
+            break;
+        case Buttons::VOLUME_UP_BUTTON:
+            debounceDelay = 0;
+            changeServoState(ServoState::SERVO_UP);
+            changeIrState();
+            break;
+        case Buttons::VOLUME_DOWN_BUTTON:
+            debounceDelay = 0;
+            changeServoState(ServoState::SERVO_DOWN);
             changeIrState();
             break;
         default:

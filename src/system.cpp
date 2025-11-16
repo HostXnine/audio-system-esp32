@@ -9,8 +9,6 @@ esp_reset_reason_t resetReason = esp_reset_reason();
 RTC_NOINIT_ATTR SystemState currentSystemState = SystemState::TV_STATE;
 
 void detachAll() {
-    Serial.println(" Writing servo position to RTC... ");
-    postitionRtc = position;
     Serial.println(" Detaching...");
     servoDetach();
     detachAudio();
