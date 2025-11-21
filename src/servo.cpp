@@ -7,11 +7,11 @@
 
 constexpr uint8_t SERVO_PIN = 23; //recommended pins 2 (if no led),4,12-19,21-23,25-27,32-33
 constexpr uint16_t STOP = 1515;
-constexpr uint16_t UP = 1530;
+constexpr uint16_t UP = 1550;
 constexpr uint16_t DOWN = 1480;
 
 static unsigned long lastDebounceTime = 0;
-static unsigned long debounceDelay = 500;
+static unsigned long debounceDelay = 0;
 static bool debounceStart = false;
 static Servo MyServo;
 
@@ -19,7 +19,7 @@ static ServoState currentServoState = ServoState::SERVO_STOP;
 
 void servoSetup() {
     Serial.println("servoSetup");
-    if (MyServo.attached() == false) { 
+    if (!MyServo.attached()) { 
         MyServo.attach(SERVO_PIN, DOWN, UP);
     }
 }
@@ -42,7 +42,7 @@ void servoState(ServoState state) {
 
 void setServoState(ServoState state) {
     currentServoState = state;
-    servoState (currentServoState);
+    servoState (currentServoState = state);
 }
 
 void debounceServo(unsigned long debounceDelay = 10) {

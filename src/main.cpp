@@ -24,7 +24,7 @@ void setup() {
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
+    servoLoop();
     menuStateLoop();
     systemStateLoop(currentSystemState);
-    servoLoop();
 }
