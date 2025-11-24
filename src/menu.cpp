@@ -5,6 +5,7 @@
 #include <Adafruit_SH110X.h>
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
+#include "debug.h"
 
 enum class MenuState : uint8_t {
     TV,
@@ -25,8 +26,8 @@ void menuOneLine(const char* text, int16_t x, int16_t y, int8_t size) {
     Display.setTextSize(size);
     Display.println(text);
     Display.display();
-    Serial.print("Menu: ");
-    Serial.println(text);
+    debug("Menu: ");
+    debugln(text);
 }
 
 void menuTwoLines(const char* text1, int16_t x1, int16_t y1,
@@ -38,47 +39,47 @@ const char* text2, int16_t x2, int16_t y2, int8_t size) {
     Display.setCursor(x2, y2);
     Display.println(text2);
     Display.display();
-    Serial.print("Menu: ");
-    Serial.print(text1);
-    Serial.print("; ");
-    Serial.println(text2);
+    debug("Menu: ");
+    debug(text1);
+    debug("; ");
+    debugln(text2);
 }
 
 void displayClear() {
-    Serial.println(" cleardisplay()");
+    debugln(" cleardisplay()");
     Display.clearDisplay();
-    Serial.println(" display()");
+    debugln(" display()");
     Display.display();
 }
 
 void menuState(MenuState currentMenuState) {
     switch (currentMenuState) {
         case MenuState::TV:
-            Serial.println("menuState=TV");
+            debugln("menuState=TV");
             menuOneLine("TV",30, 12, 5);
             break;
         case MenuState::BLUETOOTH_CONNECTING:
-            Serial.println("menuState=BLUETOOTH_CONNECTING");
+            debugln("menuState=BLUETOOTH_CONNECTING");
             menuTwoLines("Bluetooth", 0, 10, "Connecting", 0, 40, 2);
             break;
         case MenuState::BLUETOOTH_CONNECTED:
-            Serial.println("menuState=BLUETOOTH_CONNECTED");
+            debugln("menuState=BLUETOOTH_CONNECTED");
             menuTwoLines("Bluetooth", 0, 10, "Connected", 0, 40, 2);
             break;
         case MenuState::RADIO:
-            Serial.println("menuState=RADIO");
+            debugln("menuState=RADIO");
             menuTwoLines("Radio", 0, 10, currentRadioStationName, 0, 40, 2);
             break;
         case MenuState::AUX:
-            Serial.println("menuState=AUX");
+            debugln("menuState=AUX");
             menuOneLine("AUX",30, 10, 5);
             break;
         case MenuState::VOLUME:
-            Serial.println("menuState=VOLUME");
+            debugln("menuState=VOLUME");
             menuTwoLines("Volume", 0, 10, "Pos", 0, 40, 2);
             break;
         case MenuState::OFF:
-            Serial.println("menuState=OFF");
+            debugln("menuState=OFF");
             displayClear();
             break;
         default:

@@ -1,5 +1,6 @@
 #include "servo.h"
 #include <ESP32Servo.h>
+#include "debug.h"
 
 //Servo is still at 1490 - 1540 if you use a 360 (SG90) servo. Speed min 900 - max 2100. Ideal stop pint is 1515 ms.
 //I have set the forward and backward motion speed to 100 milliseconds difference from the stop point.
@@ -17,8 +18,9 @@ static Servo MyServo;
 
 static ServoState currentServoState = ServoState::SERVO_STOP;
 
+
 void servoSetup() {
-    Serial.println("servoSetup");
+    debugln("servoSetup");
     if (!MyServo.attached()) { 
         MyServo.attach(SERVO_PIN, DOWN, UP);
     }
@@ -42,7 +44,7 @@ void servoState(ServoState state) {
 
 void setServoState(ServoState state) {
     currentServoState = state;
-    servoState (currentServoState = state);
+    servoState(currentServoState);
 }
 
 void debounceServo(unsigned long debounceDelay = 10) {
@@ -50,11 +52,11 @@ void debounceServo(unsigned long debounceDelay = 10) {
     if (!initDebounce) {
         initDebounce = true;
         lastDebounceTime = millis();
-        Serial.println(" Debounce Servo start ");
+        debugln(" Debounce Servo start ");
     }
     if (((millis() - lastDebounceTime) > (debounceDelay)) && (initDebounce)) {
         initDebounce = false;
-        Serial.println("Debounce Servo ends");
+        debugln("Debounce Servo ends");
         debounceStart = false;
         setServoState(ServoState::SERVO_STOP);
     }
@@ -64,10 +66,12 @@ void changeServoState(ServoState state) {
     servoSetup();
     if (currentServoState != state) {
         setServoState(state);
-        debounceStart = true;
+        delay(10);
+        //debounceStart = true;
     }
     if (currentServoState == state) {
-        lastDebounceTime = millis(); //resets debounce timer
+        //lastDebounceTime = millis(); //resets debounce timer
+        setServoState(ServoState::SERVO_STOP);
     }
 }
 

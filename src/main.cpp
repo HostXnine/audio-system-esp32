@@ -8,23 +8,24 @@
 #include "system.h"
 #include "menu.h"
 #include "servo.h"
+#include "debug.h"
 
 void setup() {    
     Serial.begin(115200);
-    Serial.println("Setup started");
+    debugln("Setup started");
     systemSetup();
     relayPowerSetup();
     irSetup();
     physicalButtonsSetup();   
     displaySetup();
     i2sOutSetup();
-    Serial.println("Setup done");
+    debugln("Setup done");
 }
 
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
-    servoLoop();
+    //servoLoop();
     menuStateLoop();
     systemStateLoop(currentSystemState);
 }

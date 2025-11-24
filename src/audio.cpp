@@ -6,7 +6,7 @@
 #include "AudioTools/Communication/AudioHttp.h"
 #include "BluetoothA2DPSink.h"
 #include <Arduino.h>
-
+#include "debug.h"
 
 //Audio OUT (external DAC)
 constexpr uint8_t OUT_I2S_BCK_PIN = 17; //aka SCK. Connect to (BCK)
@@ -58,7 +58,7 @@ static AudioPlayer player(urlSource, i2sOut, decoder);
 //Debouncer buttonDebouncer(); // for AudioPlayer
 
 void i2sInSetup() {
-    Serial.println("I2S in setup");
+    debugln("I2S in setup");
     auto cfgIn = i2sIn.defaultConfig(RX_MODE);
     cfgIn.copyFrom(info);
     cfgIn.i2s_format = I2S_PHILIPS_FORMAT;
@@ -71,7 +71,7 @@ void i2sInSetup() {
 }
 
 void i2sOutSetup() {
-    Serial.println("I2S out setup"); 
+    debugln("I2S out setup"); 
     auto cfgOut = i2sOut.defaultConfig(TX_MODE);
     cfgOut.copyFrom(info); 
     cfgOut.i2s_format = I2S_PHILIPS_FORMAT;
@@ -85,21 +85,21 @@ void i2sOutSetup() {
 
 void detachAudio() {
     if (player.isActive()) {
-        Serial.println(" player.end");
+        debugln(" player.end");
         player.end();
     }
-    Serial.println(" a2dp_sink.disconnect");
+    debugln(" a2dp_sink.disconnect");
     if (a2dp_sink.is_connected()) {
         a2dp_sink.disconnect();
-        Serial.println(" a2dp_sink.end");
+        debugln(" a2dp_sink.end");
         a2dp_sink.end();
         delay(50);
-        Serial.println(" btStop");
+        debugln(" btStop");
         btStop();
     }
-    Serial.println(" i2sOut.End");
+    debugln(" i2sOut.End");
     i2sOut.end();
-    Serial.println(" i2sIn.end");
+    debugln(" i2sIn.end");
     i2sIn.end();
 }
 

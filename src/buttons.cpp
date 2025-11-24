@@ -4,6 +4,7 @@
 #include "audio.h"
 #include "menu.h"
 #include "servo.h"
+#include "debug.h"
 
 Buttons currentButton = Buttons::NONE_BUTTON;
 
@@ -19,11 +20,11 @@ bool validButton(Buttons button) {
         case Buttons::STOP_BUTTON:
         case Buttons::PAUSE_BUTTON:
         case Buttons::PLAY_BUTTON:
-            Serial.println("validButton(true)");
+            debugln("validButton(true)");
             return true;
             break;
         default:
-            Serial.println("validButton(default)");
+            debugln("validButton(default)");
             return false;
             break;
     }
@@ -32,13 +33,13 @@ bool validButton(Buttons button) {
 void buttonInput(Buttons &button) {
     switch(button) { //button press should be run only once!
         case Buttons::MENU_BUTTON:
-            Serial.println("button = MENUT_BUTTON");
+            debugln("button = MENUT_BUTTON");
             //debounceDelay = 1000; //if don't set this then the default value is 500 ms
             changeIrState();
             changeSystemState();
             break;
         case Buttons::POWER_BUTTON:
-            Serial.println("button = POWER_BUTTON");
+            debugln("button = POWER_BUTTON");
             changeIrState();
             changeOnOffSystemState();
             break;
@@ -67,10 +68,10 @@ void buttonInput(Buttons &button) {
             changeIrState();
             break;
         default:
-            Serial.println("button = non-valid button");
+            debugln("button = non-valid button");
             changeIrState();
             break;
     }
-    Serial.println("button = NONE_BUTTON");
+    debugln("button = NONE_BUTTON");
     button = Buttons::NONE_BUTTON;
 }

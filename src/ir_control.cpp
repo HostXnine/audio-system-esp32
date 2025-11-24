@@ -4,6 +4,7 @@
 #define DECODE_NEC
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
+#include "debug.h"
 
 constexpr uint8_t IR_RECEIVE_PIN = 19;
 
@@ -14,18 +15,18 @@ static bool initIrDebounce = false;
 IrState currentIrState = IrState::IR_RECEIVE_STATE;
 
 void irSetup() {
-    Serial.println("IR setup");
+    debugln("IR setup");
     IrReceiver.begin(IR_RECEIVE_PIN);
 }
 
 void decodeNewRemote() { //only used when decoding a new remote
     if (IrReceiver.decode()) {
-        Serial.print("IrReceiver.decodedIRData.command=");
-        Serial.print(IrReceiver.decodedIRData.command);
-        Serial.print(" Protocol=");
-        Serial.print(IrReceiver.decodedIRData.protocol);
-        Serial.print(" ProtocolName=");
-        Serial.println(getProtocolString(IrReceiver.decodedIRData.protocol));
+        debug("IrReceiver.decodedIRData.command=");
+        debug(IrReceiver.decodedIRData.command);
+        debug(" Protocol=");
+        debug(IrReceiver.decodedIRData.protocol);
+        debug(" ProtocolName=");
+        debugln(getProtocolString(IrReceiver.decodedIRData.protocol));
         IrReceiver.resume();
     }
 }
@@ -34,11 +35,11 @@ void debounceIr(unsigned long debounceDelay = 500) {
     if (!initIrDebounce) {
         initIrDebounce = true;
         lastDebounceTime = millis();
-        Serial.println(" Debounce start ");
+        debugln(" Debounce start ");
     }
     if (((millis() - lastDebounceTime) > (debounceDelay)) && (initIrDebounce)) {
         initIrDebounce = false;
-        Serial.println("Debounce ends");
+        debugln("Debounce ends");
         debounceDelay = 500;
         changeIrState(); //changes state!!!
     }
@@ -49,17 +50,17 @@ void changeIrState() {
         case IrState::IR_RECEIVE_STATE: {
             bool valid = validButton(currentButton);
             if (valid) {
-                Serial.println("changeIrState = IR_DEBOUNCE_STATE");
+                debugln("changeIrState = IR_DEBOUNCE_STATE");
                 currentIrState = IrState::IR_DEBOUNCE_STATE;
             } else { 
-                Serial.println("changeIrState = IR_RESET_STATE");
+                debugln("changeIrState = IR_RESET_STATE");
                 currentIrState = IrState::IR_RESET_STATE;
             }
             break;
             }
         case IrState::IR_DEBOUNCE_STATE:
             if (!initIrDebounce) {
-                Serial.println("changeIrState = IR_RECEIVE_STATE");
+                debugln("changeIrState = IR_RECEIVE_STATE");
                 currentIrState = IrState::IR_RESET_STATE;
             }
             break;
@@ -73,18 +74,18 @@ void changeIrState() {
 void irStateLoop(IrState state) {
     switch (state) {
         case IrState::IR_RECEIVE_STATE:
-            //Serial.println("IR_RECEIVE_STATE");
+            //debugln("IR_RECEIVE_STATE");
             if (IrReceiver.decode()) {
                 currentButton = (static_cast<Buttons>(IrReceiver.decodedIRData.command));
                 buttonInput(currentButton);
             }
             break;
         case IrState::IR_DEBOUNCE_STATE:
-            //Serial.println("IR_DEBOUNCE_STATE");
+            //debugln("IR_DEBOUNCE_STATE");
             debounceIr(debounceDelay); //self sets to IR_RESET_STATE
             break;
         case IrState::IR_RESET_STATE:
-            //Serial.println("IR_RESET_STATE");
+            //debugln("IR_RESET_STATE");
             IrReceiver.resume();
             changeIrState(); //self sets to IR_RECEIVE_STATE
             break;

@@ -3,13 +3,14 @@
 #include "audio.h"
 #include "relay.h"
 #include "menu.h"
+#include "debug.h"
 
 esp_reset_reason_t resetReason = esp_reset_reason();
 
 RTC_NOINIT_ATTR SystemState currentSystemState = SystemState::TV_STATE;
 
 void detachAll() {
-    Serial.println(" Detaching...");
+    debugln(" Detaching...");
     servoDetach();
     detachAudio();
 }
@@ -17,33 +18,33 @@ void detachAll() {
 void restartSystem() {
     relayRestart();
     detachAll();
-    Serial.println(" Restarting now...");
+    debugln(" Restarting now...");
     esp_restart();
 }
 
 void systemStateSetup(SystemState state) { //has to run only once
     switch (state) {
         case SystemState::TV_STATE:
-            Serial.println("TV_STATE SETUP");
+            debugln("TV_STATE SETUP");
             i2sInSetup();
             break;
         case SystemState::BLUETOOTH_STATE:
-            Serial.println("BLUETOOTH_STATE SETUP");
+            debugln("BLUETOOTH_STATE SETUP");
             a2dpStart();
             break;
         case SystemState::RADIO_STATE:
-            Serial.println("RADIO_STATE SETUP");
+            debugln("RADIO_STATE SETUP");
             playerBegin();
             break;
         case SystemState::AUX_STATE:
-            Serial.println("AUX_STATE SETUP");
+            debugln("AUX_STATE SETUP");
             relayAuxState();
             break;
         case SystemState::OFF_STATE:
-            Serial.println("OFF_STATE SETUP");
+            debugln("OFF_STATE SETUP");
             detachAll();
             relayOffState();
-            Serial.println("OFF  ");        
+            debugln("OFF  ");        
             break;
         default:
             break;
@@ -53,11 +54,11 @@ void systemStateSetup(SystemState state) { //has to run only once
 void systemStateLoop(SystemState state) {
     switch (state) {
         case SystemState::TV_STATE:
-            //Serial.println("TV_STATE LOOP");
+            //debugln("TV_STATE LOOP");
             copierInOutCopy();
             break;
         case SystemState::RADIO_STATE:
-            //Serial.println("RADIO_STATE LOOP");
+            //debugln("RADIO_STATE LOOP");
             playerCopy();
             break;
         default:
@@ -67,17 +68,17 @@ void systemStateLoop(SystemState state) {
 
 void setSystemState (SystemState newState) {
     if (newState == SystemState::OFF_STATE) {
-        Serial.println("setSystemState == OFF_STATE");
+        debugln("setSystemState == OFF_STATE");
         currentSystemState = SystemState::OFF_STATE;
         systemStateSetup(currentSystemState);
         return;
     }  
     if (newState != currentSystemState) {
-        Serial.println("setSystemState has changed");
+        debugln("setSystemState has changed");
         currentSystemState = newState;
         restartSystem();
     } else {
-        Serial.println("setSystemState runs systemStateSetup");
+        debugln("setSystemState runs systemStateSetup");
         systemStateSetup(currentSystemState);
     }
 }
@@ -90,31 +91,31 @@ inline SystemState nextSystemState(SystemState state, uint8_t step) {
 
 void changeSystemState() { //rotates through system states
     if (currentSystemState != SystemState::AUX_STATE) {
-        Serial.println("changeSystemState != AUX_STATE");
+        debugln("changeSystemState != AUX_STATE");
         setSystemState(nextSystemState(currentSystemState, 1));
     } else {
-        Serial.println("changeSystemState == AUX_STATE");
+        debugln("changeSystemState == AUX_STATE");
         setSystemState(nextSystemState(currentSystemState, 2));
     }
 }
 
 void changeOnOffSystemState() {
     if (currentSystemState != SystemState::OFF_STATE){
-        Serial.println("changeOnOffSystemState() != OFF_STATE");
+        debugln("changeOnOffSystemState() != OFF_STATE");
         setSystemState(SystemState::OFF_STATE);
     } else {
-        Serial.println("changeOnOffSystemState() == OFF_STATE");
+        debugln("changeOnOffSystemState() == OFF_STATE");
         setSystemState(static_cast<SystemState>(0)); //sets to first element in enum
     }
 }
 
 void systemSetup() { 
     if (resetReason != ESP_RST_SW) {
-        Serial.println("RTC variabke setup");
+        debugln("RTC variabke setup");
         setSystemState(static_cast<SystemState>(0)); //sets to first element in enum
-        Serial.println("systemSetup() setSystemState(0)");
+        debugln("systemSetup() setSystemState(0)");
     } else {
         setSystemState(currentSystemState);
-        Serial.println("systemSetup() setSystemState(currentSystemState)");
+        debugln("systemSetup() setSystemState(currentSystemState)");
     }
 }
