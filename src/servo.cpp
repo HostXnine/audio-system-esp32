@@ -11,13 +11,10 @@ constexpr uint16_t STOP = 1515;
 constexpr uint16_t UP = 1550;
 constexpr uint16_t DOWN = 1480;
 
-static unsigned long lastDebounceTime = 0;
-static unsigned long debounceDelay = 0;
 static bool debounceStart = false;
 static Servo MyServo;
 
 static ServoState currentServoState = ServoState::SERVO_STOP;
-
 
 void servoSetup() {
     debugln("servoSetup");
@@ -48,6 +45,7 @@ void setServoState(ServoState state) {
 }
 
 void debounceServo(unsigned long debounceDelay = 10) {
+    static unsigned long lastDebounceTime = 0;
     static bool initDebounce = false;
     if (!initDebounce) {
         initDebounce = true;

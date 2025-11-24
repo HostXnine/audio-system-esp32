@@ -8,7 +8,6 @@
 
 constexpr uint8_t IR_RECEIVE_PIN = 19;
 
-static unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 500;
 static bool initIrDebounce = false;
 
@@ -32,6 +31,7 @@ void decodeNewRemote() { //only used when decoding a new remote
 }
 
 void debounceIr(unsigned long debounceDelay = 500) {
+    static unsigned long lastDebounceTime = 0;
     if (!initIrDebounce) {
         initIrDebounce = true;
         lastDebounceTime = millis();
