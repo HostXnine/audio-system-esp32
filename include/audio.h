@@ -2,9 +2,6 @@
 
 extern const char* currentRadioStationName;
 
-class BluetoothA2DPSink;
-extern BluetoothA2DPSink a2dp_sink;
-
 void i2sInSetup();
 void i2sOutSetup();
 void detachAudio();

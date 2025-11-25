@@ -26,22 +26,30 @@ void systemStateSetup(SystemState state) { //has to run only once
     switch (state) {
         case SystemState::TV_STATE:
             debugln("TV_STATE SETUP");
+            menuState(MenuState::TV);
             i2sInSetup();
+            i2sOutSetup();
             break;
         case SystemState::BLUETOOTH_STATE:
             debugln("BLUETOOTH_STATE SETUP");
+            menuState(MenuState::BLUETOOTH_CONNECTING);
             a2dpStart();
+            i2sOutSetup();
             break;
         case SystemState::RADIO_STATE:
             debugln("RADIO_STATE SETUP");
+            menuState(MenuState::RADIO);
             playerBegin();
+            i2sOutSetup();
             break;
         case SystemState::AUX_STATE:
             debugln("AUX_STATE SETUP");
+            menuState(MenuState::AUX);
             relayAuxState();
             break;
         case SystemState::OFF_STATE:
             debugln("OFF_STATE SETUP");
+            menuState(MenuState::OFF);
             detachAll();
             relayOffState();
             debugln("OFF  ");        
@@ -57,6 +65,8 @@ void systemStateLoop(SystemState state) {
             //debugln("TV_STATE LOOP");
             copierInOutCopy();
             break;
+        case SystemState::BLUETOOTH_STATE:
+            menuBluetoothConnect();
         case SystemState::RADIO_STATE:
             //debugln("RADIO_STATE LOOP");
             playerCopy();

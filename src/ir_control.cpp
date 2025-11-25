@@ -20,12 +20,12 @@ void irSetup() {
 
 void decodeNewRemote() { //only used when decoding a new remote
     if (IrReceiver.decode()) {
-        debug("IrReceiver.decodedIRData.command=");
-        debug(IrReceiver.decodedIRData.command);
-        debug(" Protocol=");
-        debug(IrReceiver.decodedIRData.protocol);
-        debug(" ProtocolName=");
-        debugln(getProtocolString(IrReceiver.decodedIRData.protocol));
+        Serial.print("IrReceiver.decodedIRData.command=");
+        Serial.print(IrReceiver.decodedIRData.command);
+        Serial.print(" Protocol=");
+        Serial.print(IrReceiver.decodedIRData.protocol);
+        Serial.print(" ProtocolName=");
+        Serial.println(getProtocolString(IrReceiver.decodedIRData.protocol));
         IrReceiver.resume();
     }
 }

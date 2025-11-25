@@ -13,19 +13,17 @@
 void setup() {    
     Serial.begin(115200);
     debugln("Setup started");
-    systemSetup();
     relayPowerSetup();
-    irSetup();
-    physicalButtonsSetup();   
     displaySetup();
-    i2sOutSetup();
+    irSetup();
+    systemSetup();
+    physicalButtonsSetup();   
     debugln("Setup done");
 }
 
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
-    //servoLoop();
-    menuStateLoop();
+    servoLoop();
     systemStateLoop(currentSystemState);
 }

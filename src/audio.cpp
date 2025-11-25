@@ -107,51 +107,53 @@ void a2dpStart() {
     a2dp_sink.start("MojAudio");
 }
 bool a2dpIsConnected() {
-  if (a2dp_sink.is_connected()) {
-    return true;
-  } else {
-    return false;
-  }
+    return a2dp_sink.is_connected();
 }
+
 void playerBegin() {
     player.begin();
 }
+
 void copierInOutCopy() {
     copierInOut.copy();
 }
+
 void playerCopy() {
     player.copy();
 }
+
 void audioNext() {
     if (a2dp_sink.is_connected()) {
-      a2dp_sink.next();
+        a2dp_sink.next();
     } 
     else if (player.isActive()) {
-      player.next();
-      currentStation = ((currentStation + 1) % sizeOfUrls);
-      currentRadioStationName = radioStationNames[currentStation];
+        player.next();
+        currentStation = ((currentStation + 1) % sizeOfUrls);
+        currentRadioStationName = radioStationNames[currentStation];
     } 
 }
+
 void audioPrevious() {
     if (a2dp_sink.is_connected()) {
-      a2dp_sink.previous();
+        a2dp_sink.previous();
     } 
     else if (player.isActive()) {
-      player.previous();
-      currentStation = ((currentStation - 1 + sizeOfUrls) % sizeOfUrls);
-      currentRadioStationName = radioStationNames[currentStation];
+        player.previous();
+        currentStation = ((currentStation - 1 + sizeOfUrls) % sizeOfUrls);
+        currentRadioStationName = radioStationNames[currentStation];
     }
 }
+
 void audioPlayPause() {
     static bool paused = false;
     if (a2dp_sink.is_connected()) {
-      if (!paused) {
+        if (!paused) {
         a2dp_sink.pause();
         paused = true;
-      }
-      if (paused) {
+        }
+        if (paused) {
         a2dp_sink.play();
         paused = false;
-      }
-    } 
+        }
+    }
 }
