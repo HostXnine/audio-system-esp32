@@ -10,7 +10,7 @@
 #include "servo.h"
 #include "debug.h"
 
-void setup() {    
+void setup() {
     Serial.begin(115200);
     debugln("Setup started");
     relayPowerSetup();

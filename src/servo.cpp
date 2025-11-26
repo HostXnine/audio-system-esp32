@@ -45,14 +45,14 @@ void setServoState(ServoState state) {
     servoState(currentServoState);
 }
 
-void debounceServo(unsigned long debounceDelay = 500) {
+void debounceServo(unsigned long debounceDelayServo = 10) {
     static bool initDebounce = false;
     if (!initDebounce) {
         initDebounce = true;
         lastDebounceTime = millis();
         debugln(" Debounce Servo start ");
     }
-    if (((millis() - lastDebounceTime) > (debounceDelay)) && (initDebounce)) {
+    if (((millis() - lastDebounceTime) > (debounceDelayServo)) && (initDebounce)) {
         initDebounce = false;
         debugln("Debounce Servo ends");
         debounceStart = false;
@@ -68,7 +68,6 @@ void changeServoState(ServoState state) {
     }
     if (currentServoState == state) {
         lastDebounceTime = millis(); //resets debounce timer
-        setServoState(ServoState::SERVO_STOP);
     }
 }
 

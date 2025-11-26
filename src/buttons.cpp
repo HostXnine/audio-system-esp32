@@ -58,12 +58,12 @@ void buttonInput(Buttons &button) {
             changeIrState();
             break;
         case Buttons::VOLUME_UP_BUTTON:
-            debounceDelay = 0;
+            debounceDelayIr = 0;
             changeServoState(ServoState::SERVO_UP);
             changeIrState();
             break;
         case Buttons::VOLUME_DOWN_BUTTON:
-            debounceDelay = 0;
+            debounceDelayIr = 0;
             changeServoState(ServoState::SERVO_DOWN);
             changeIrState();
             break;

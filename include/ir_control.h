@@ -1,6 +1,7 @@
 #pragma once
+#include <Arduino.h>
 
-enum class IrState {
+enum class IrState : uint8_t {
     IR_RECEIVE_STATE,
     IR_DEBOUNCE_STATE,
     IR_RESET_STATE,
@@ -9,7 +10,7 @@ enum class IrState {
 
 extern IrState currentIrState;
 
-extern unsigned long debounceDelay;
+extern unsigned long debounceDelayIr;
 
 void irSetup();
 void decodeNewRemote();

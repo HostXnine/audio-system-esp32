@@ -1,6 +1,5 @@
 #include "ir_control.h"
 #include "buttons.h"
-#include <Arduino.h>
 #define DECODE_NEC
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
@@ -8,7 +7,7 @@
 
 constexpr uint8_t IR_RECEIVE_PIN = 19;
 
-unsigned long debounceDelay = 500;
+unsigned long debounceDelayIr = 500;
 static bool initIrDebounce = false;
 
 IrState currentIrState = IrState::IR_RECEIVE_STATE;
@@ -82,7 +81,7 @@ void irStateLoop(IrState state) {
             break;
         case IrState::IR_DEBOUNCE_STATE:
             //debugln("IR_DEBOUNCE_STATE");
-            debounceIr(debounceDelay); //self sets to IR_RESET_STATE
+            debounceIr(debounceDelayIr); //self sets to IR_RESET_STATE
             break;
         case IrState::IR_RESET_STATE:
             //debugln("IR_RESET_STATE");
