@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "WifiConfig.h"
+#include "wifi_config.h"
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecMP3Helix.h"
 #include "AudioTools/Disk/AudioSourceURL.h"
@@ -11,14 +11,6 @@
 #define DECODE_NEC
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
-
-/*To do list:
-- add url radio connection timeout
-- fix broken functionality when bluetooth is selected
-- fix spageti code in tasks and menuControl
-- optimize deoubce for remote control
-- maybe split the remote and remote debounce functionality since for some buttons it has to be set at a different timeout
-*/
 
 // Tasks and menu control global variables
 RTC_NOINIT_ATTR uint8_t task; //RTC variable survive restarts
