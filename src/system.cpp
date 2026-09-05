@@ -67,11 +67,14 @@ void systemStateLoop(SystemState state) {
             break;
         case SystemState::BLUETOOTH_STATE:
             menuBluetoothConnect();
+            //debugln("BLUETOOTH_STATE LOOP");
+            break;
         case SystemState::RADIO_STATE:
             //debugln("RADIO_STATE LOOP");
             playerCopy();
             break;
         default:
+            //debugln("default LOOP");
             break;
     }
 }
@@ -121,7 +124,7 @@ void changeOnOffSystemState() {
 
 void systemSetup() { 
     if (resetReason != ESP_RST_SW) {
-        debugln("RTC variabke setup");
+        debugln("RTC variable setup");
         setSystemState(static_cast<SystemState>(0)); //sets to first element in enum
         debugln("systemSetup() setSystemState(0)");
     } else {

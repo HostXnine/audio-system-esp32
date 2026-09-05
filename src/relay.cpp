@@ -15,7 +15,7 @@ void relayPowerSetup() {
     digitalWrite(ON_OFF_AC_PIN, HIGH);
 }
 void relayAuxSetup() {
-    debugln("AUX setup");
+    debugln("Relay AUX setup");
     pinMode(AUX_LEFT_PIN, OUTPUT);
     digitalWrite(AUX_LEFT_PIN, LOW); //when LOW then it plays ADC IN
     pinMode(AUX_RIGHT_PIN, OUTPUT);
@@ -23,7 +23,7 @@ void relayAuxSetup() {
 }
 
 void relayRestart() {
-    debugln(" digitalWrite ON_OFF_PIN");
+    debugln(" Relay digitalWrite ON_OFF_PIN");
     if (digitalRead(ON_OFF_5V_PIN) == LOW) {
         digitalWrite(ON_OFF_5V_PIN, HIGH);
     }

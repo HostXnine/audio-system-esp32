@@ -19,7 +19,7 @@ teletext 203 | subtitles 96 |   ATV/DTV 95 |    RADIO 91
         << 252 |       [] 253 |     >/II 254 |      >> 251 
 
 
-Buttons on VCR remote. I uses DECODE_NEC
+Buttons on VCR remote. It uses DECODE_NEC
 Operate 20
 1  5 | 2  6 | 3  7
 4 12 | 5 13 | 6 14

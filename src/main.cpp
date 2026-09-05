@@ -17,13 +17,13 @@ void setup() {
     displaySetup();
     irSetup();
     systemSetup();
-    physicalButtonsSetup();   
+    //physicalButtonsSetup();   
     debugln("Setup done");
 }
 
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
-    servoLoop();
+    //servoLoop();
     systemStateLoop(currentSystemState);
 }
