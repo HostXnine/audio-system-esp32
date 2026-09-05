@@ -7,7 +7,7 @@
 #include "ir_control.h"
 #include "system.h"
 #include "menu.h"
-#include "servo.h"
+#include "stepper.h"
 #include "debug.h"
 
 void setup() {
@@ -24,6 +24,6 @@ void setup() {
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
-    //servoLoop();
     systemStateLoop(currentSystemState);
+    stepperLoop();
 }

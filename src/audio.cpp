@@ -27,7 +27,7 @@ static I2SStream i2sIn;
 static I2SStream i2sOut;
 
 //Bluetooth
-BluetoothA2DPSink a2dp_sink(i2sOut);
+static BluetoothA2DPSink a2dp_sink(i2sOut);
 
 //Copying I2S stream from external SPDIF converter to external DAC. To actually run the stream you need to use copierInOut.copy() in loop()
 static StreamCopy copierInOut(i2sOut, i2sIn);
