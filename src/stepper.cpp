@@ -13,11 +13,14 @@ constexpr uint8_t STEPPER_PIN_4 = 18; // IN4
 static AccelStepper stepper(AccelStepper::FULL4WIRE, STEPPER_PIN_1, STEPPER_PIN_2, STEPPER_PIN_3, STEPPER_PIN_4);
 
 
-void stepperLoop() {
+void stepperLoopRandom() {
     if (stepper.distanceToGo() == 0) {
-        stepper.moveTo(1);
-        stepper.setMaxSpeed(200);
-        stepper.setAcceleration(100);
+        // Random change to speed, position and acceleration
+        // Make sure we dont get 0 speed or accelerations
+        delay(1000);
+        stepper.moveTo(rand() % 200);
+        stepper.setMaxSpeed((rand() % 200) + 1);
+        stepper.setAcceleration((rand() % 200) + 1);
     }
     stepper.run();
 }
