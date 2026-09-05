@@ -26,4 +26,4 @@ void loop() {
     irStateLoop(currentIrState);
     systemStateLoop(currentSystemState);
     stepperLoopRandom(); // only for testing
-}g
+}
