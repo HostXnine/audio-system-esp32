@@ -25,5 +25,5 @@ void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
     systemStateLoop(currentSystemState);
-    stepperLoop();
+    //stepperLoop(); // was only for testing
 }
