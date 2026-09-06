@@ -1,5 +1,6 @@
 #include "ir_control.h"
 #include "buttons.h"
+#include "stepper.h"
 #define DECODE_NEC
 //#define DECODE_DENON //includes sharp. Has to be called before IRremote.hpp. Comment this when adding a new remote.
 #include <IRremote.hpp>
@@ -76,7 +77,17 @@ void irStateLoop(IrState state) {
             //debugln("IR_RECEIVE_STATE");
             if (IrReceiver.decode()) {
                 currentButton = (static_cast<Buttons>(IrReceiver.decodedIRData.command));
-                buttonInput(currentButton);
+                if (currentButton == Buttons::VOLUME_UP_BUTTON) {
+                    changeStepperState(StepperState::STEPPER_UP);
+                    currentButton = Buttons::NONE_BUTTON;
+                    IrReceiver.resume();
+                } else if (currentButton == Buttons::VOLUME_DOWN_BUTTON) {
+                    changeStepperState(StepperState::STEPPER_DOWN);
+                    currentButton = Buttons::NONE_BUTTON;
+                    IrReceiver.resume();
+                } else {
+                    buttonInput(currentButton);
+                }
             }
             break;
         case IrState::IR_DEBOUNCE_STATE:

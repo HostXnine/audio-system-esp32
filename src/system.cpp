@@ -3,6 +3,7 @@
 #include "audio.h"
 #include "relay.h"
 #include "menu.h"
+#include "stepper.h"
 #include "debug.h"
 
 esp_reset_reason_t resetReason = esp_reset_reason();
@@ -12,6 +13,7 @@ RTC_NOINIT_ATTR SystemState currentSystemState = SystemState::TV_STATE;
 void detachAll() {
     debugln(" Detaching...");
     servoDetach();
+    stepperDetach();
     detachAudio();
 }
 

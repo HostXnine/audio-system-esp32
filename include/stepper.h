@@ -8,5 +8,5 @@ enum class StepperState : uint8_t {
 };
 
 void changeStepperState(StepperState state);
-void stepperLoopRandom();
+void stepperLoop();
 void stepperDetach();
