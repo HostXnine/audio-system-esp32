@@ -41,7 +41,7 @@ void systemStateSetup(SystemState state) { //has to run only once
         case SystemState::RADIO_STATE:
             debugln("RADIO_STATE SETUP");
             menuState(MenuState::RADIO);
-            playerBegin();
+            radioStart();
             i2sOutSetup();
             break;
         case SystemState::AUX_STATE:
@@ -73,7 +73,7 @@ void systemStateLoop(SystemState state) {
             break;
         case SystemState::RADIO_STATE:
             //debugln("RADIO_STATE LOOP");
-            playerCopy();
+            menuRadioStatus();
             break;
         default:
             //debugln("default LOOP");

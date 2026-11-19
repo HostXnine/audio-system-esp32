@@ -38,6 +38,16 @@ void displayClear() {
     Display.display();
 }
 
+static const char* radioStatusTitle(RadioStatus status) {
+    switch (status) {
+        case RadioStatus::CONNECTING_WIFI: return "WiFi...";
+        case RadioStatus::NO_WIFI:         return "No WiFi";
+        case RadioStatus::CONNECTING:      return "Tuning...";
+        case RadioStatus::STATION_FAILED:  return "No signal";
+        default:                           return "Radio";
+    }
+}
+
 void menuState(MenuState currentMenuState) {
     switch (currentMenuState) {
         case MenuState::TV:
@@ -54,7 +64,7 @@ void menuState(MenuState currentMenuState) {
             break;
         case MenuState::RADIO:
             debugln("menuState=RADIO");
-            menuTwoLines("Radio", 0, 10, currentRadioStationName, 0, 40, 2);
+            menuTwoLines(radioStatusTitle(radioGetStatus()), 0, 10, currentRadioStationName, 0, 40, 2);
             break;
         case MenuState::AUX:
             debugln("menuState=AUX");
@@ -88,5 +98,15 @@ void menuBluetoothConnect() {
     if (a2dpIsConnected() && (connected)) {
         menuState(MenuState::BLUETOOTH_CONNECTED);
         connected = false;
+    }
+}
+
+// Called from loop() in RADIO_STATE: redraws the display when the radio task's status changes.
+void menuRadioStatus() {
+    static RadioStatus shown = RadioStatus::IDLE;
+    RadioStatus now = radioGetStatus();
+    if (now != shown) {
+        shown = now;
+        menuState(MenuState::RADIO);
     }
 }

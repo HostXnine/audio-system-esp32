@@ -16,6 +16,7 @@ void setup() {
     relayPowerSetup();
     displaySetup();
     irSetup();
+    stepperSetup();
     systemSetup();
     //physicalButtonsSetup();   
     debugln("Setup done");
@@ -24,6 +25,5 @@ void setup() {
 void loop() {
     //decodeNewRemote(); //uncomment this for decoding a new remote
     irStateLoop(currentIrState);
-    stepperLoop();
     systemStateLoop(currentSystemState);
 }

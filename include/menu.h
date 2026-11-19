@@ -16,4 +16,5 @@ extern MenuState currentMenuState;
 
 void menuState(MenuState currentMenuState);
 void menuUpdateRadioName();
+void menuRadioStatus();
 void menuBluetoothConnect();

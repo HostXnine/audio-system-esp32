@@ -1,4 +1,14 @@
 #pragma once
+#include <Arduino.h>
+
+enum class RadioStatus : uint8_t {
+    IDLE,
+    CONNECTING_WIFI,
+    NO_WIFI,
+    CONNECTING,
+    PLAYING,
+    STATION_FAILED,
+};
 
 extern const char* currentRadioStationName;
 
@@ -9,9 +19,9 @@ void detachAudio();
 void a2dpStart();
 bool a2dpIsConnected();
 
-void playerBegin();
+void radioStart();
+RadioStatus radioGetStatus();
 void copierInOutCopy();
-void playerCopy();
 
 void audioNext();
 void audioPrevious();
