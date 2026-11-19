@@ -22,7 +22,7 @@ void menuTwoLines(const char* text1, int16_t x1, int16_t y1,
 const char* text2, int16_t x2, int16_t y2, int8_t size) {
     Display.clearDisplay();
     Display.setCursor(x1, y1);
-    Display.setTextSize(2);
+    Display.setTextSize(size);
     Display.println(text1);
     Display.setCursor(x2, y2);
     Display.println(text2);

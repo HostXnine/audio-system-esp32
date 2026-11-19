@@ -1,5 +1,4 @@
 #include "system.h"
-#include "servo.h"
 #include "audio.h"
 #include "relay.h"
 #include "menu.h"
@@ -12,7 +11,6 @@ RTC_NOINIT_ATTR SystemState currentSystemState = SystemState::TV_STATE;
 
 void detachAll() {
     debugln(" Detaching...");
-    servoDetach();
     stepperDetach();
     detachAudio();
 }
@@ -125,10 +123,15 @@ void changeOnOffSystemState() {
 }
 
 void systemSetup() { 
-    if (resetReason != ESP_RST_SW) {
+    // RTC_NOINIT memory holds random data after power-on (the initializer above is ignored),
+    // so set the state directly instead of going through setSystemState(), which would
+    // see a "changed" state and restart the chip a second time.
+    if (resetReason != ESP_RST_SW
+        || static_cast<uint8_t>(currentSystemState) >= static_cast<uint8_t>(SystemState::STATE_COUNT)) {
         debugln("RTC variable setup");
-        setSystemState(static_cast<SystemState>(0)); //sets to first element in enum
-        debugln("systemSetup() setSystemState(0)");
+        currentSystemState = static_cast<SystemState>(0); //sets to first element in enum
+        systemStateSetup(currentSystemState);
+        debugln("systemSetup() systemStateSetup(0)");
     } else {
         setSystemState(currentSystemState);
         debugln("systemSetup() setSystemState(currentSystemState)");

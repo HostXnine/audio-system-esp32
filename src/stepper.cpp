@@ -8,7 +8,7 @@ constexpr uint8_t STEPPER_PIN_1 = 15; // IN1
 constexpr uint8_t STEPPER_PIN_2 = 2;  // IN2
 constexpr uint8_t STEPPER_PIN_3 = 5;  // IN3
 constexpr uint8_t STEPPER_PIN_4 = 18; // IN4
-static constexpr float STEPPER_SPEED = 250.0f; // full steps per second (28BYJ-48 tops out around ~500)
+static constexpr uint8_t STEPPER_SPEED = 250; // full steps per second (28BYJ-48 tops out around ~500)
 // NEC remotes send a repeat frame every ~108 ms while a button is held.
 // If no frame arrives within this time, the button was released -> stop.
 static constexpr unsigned long IR_HOLD_TIMEOUT_MS = 200;

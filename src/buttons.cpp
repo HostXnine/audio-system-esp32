@@ -3,7 +3,6 @@
 #include "system.h"
 #include "audio.h"
 #include "menu.h"
-#include "servo.h"
 #include "debug.h"
 
 Buttons currentButton = Buttons::NONE_BUTTON;
@@ -57,16 +56,7 @@ void buttonInput(Buttons &button) {
             audioPlayPause();
             changeIrState();
             break;
-        case Buttons::VOLUME_UP_BUTTON:
-            debounceDelayIr = 0;
-            changeServoState(ServoState::SERVO_UP);
-            changeIrState();
-            break;
-        case Buttons::VOLUME_DOWN_BUTTON:
-            debounceDelayIr = 0;
-            changeServoState(ServoState::SERVO_DOWN);
-            changeIrState();
-            break;
+        // VOLUME_UP/DOWN never get here: irStateLoop() sends them to the stepper directly.
         default:
             debugln("button = non-valid button");
             changeIrState();

@@ -36,7 +36,7 @@ static StreamCopy copierInOut(i2sOut, i2sIn);
 
 const char* urls[3] = { 
     "http://live.radio.si/Toti",
-    "http://reflector.radionet.si:8000/stream.ogg.m3u",
+    "http://reflector.radionet.si:8000/stream.ogg",
     "http://livestreaming-node-3.srg-ssr.ch/srgssr/srf3/mp3/128"
 };
 
@@ -214,19 +214,35 @@ void i2sOutSetup() {
     i2sOut.begin(cfgOut);
 }
 
+static bool a2dpStarted = false;
+
+// Longest the radio task can be stuck in one call (HTTP connect) before it sees STOP, plus margin.
+static constexpr uint32_t RADIO_STOP_TIMEOUT_MS = URL_TIMEOUT_MS + 3000;
+
 void detachAudio() {
     if (radioRunning()) {
         debugln(" radio stop");
         radioStop();
+        // Wait until the radio task has really finished, otherwise it can still be writing
+        // to i2sOut while we end it below.
+        uint32_t start = millis();
+        while (radioRunning() && millis() - start < RADIO_STOP_TIMEOUT_MS) {
+            delay(10);
+        }
+        if (radioRunning()) debugln(" radio task did not stop in time");
     }
-    debugln(" a2dp_sink.disconnect");
-    if (a2dp_sink.is_connected()) {
-        a2dp_sink.disconnect();
+    if (a2dpStarted) {
+        // End Bluetooth even when no phone is connected, so the device isn't left discoverable.
+        if (a2dp_sink.is_connected()) {
+            debugln(" a2dp_sink.disconnect");
+            a2dp_sink.disconnect();
+        }
         debugln(" a2dp_sink.end");
         a2dp_sink.end();
         delay(50);
         debugln(" btStop");
         btStop();
+        a2dpStarted = false;
     }
     debugln(" i2sOut.End");
     i2sOut.end();
@@ -236,6 +252,7 @@ void detachAudio() {
 
 void a2dpStart() {
     a2dp_sink.start("MojAudio");
+    a2dpStarted = true;
 }
 bool a2dpIsConnected() {
     return a2dp_sink.is_connected();
@@ -269,10 +286,11 @@ void audioPlayPause() {
         if (!paused) {
         a2dp_sink.pause();
         paused = true;
-        }
-        if (paused) {
-        a2dp_sink.play();
-        paused = false;
+        } else {
+            if (paused) {
+            a2dp_sink.play();
+            paused = false;
+            }
         }
     }
 }

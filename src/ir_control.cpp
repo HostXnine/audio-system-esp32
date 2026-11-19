@@ -40,7 +40,6 @@ void debounceIr(unsigned long debounceDelay = 500) {
     if (((millis() - lastDebounceTime) > (debounceDelay)) && (initIrDebounce)) {
         initIrDebounce = false;
         debugln("Debounce ends");
-        debounceDelay = 500;
         changeIrState(); //changes state!!!
     }
 }

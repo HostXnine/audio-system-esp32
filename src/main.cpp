@@ -1,6 +1,5 @@
 #include <Arduino.h>
 #include "display.h"
-#include "servo.h"
 #include "relay.h"
 #include "audio.h"
 #include "physical_buttons.h"
@@ -11,14 +10,15 @@
 #include "debug.h"
 
 void setup() {
-    Serial.begin(115200);
+    //Serial.begin(115200);
     debugln("Setup started");
     relayPowerSetup();
+    relayAuxSetup(); // must run before systemSetup(): AUX_STATE switches these pins HIGH
     displaySetup();
     irSetup();
     stepperSetup();
     systemSetup();
-    //physicalButtonsSetup();   
+    //physicalButtonsSetup();
     debugln("Setup done");
 }
 

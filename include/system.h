@@ -13,7 +13,6 @@ enum class SystemState : uint8_t {
 extern enum SystemState currentSystemState;
 
 void changeSystemState();
-void changeSystemState();
 void systemSetup();
 void systemStateLoop(enum SystemState);
 void changeOnOffSystemState();
